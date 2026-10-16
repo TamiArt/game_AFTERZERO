@@ -48,6 +48,9 @@
 4. [x] Make building resource debits conditional and atomic; reject the transaction if the current balance is insufficient.
 5. [x] Add a regression test for a failed atomic balance guard.
 6. [ ] Review remaining transaction boundaries and concurrent resource/cooldown updates.
+- [x] Guard demo-mode building completion against duplicate rewards and quest progress.
+- [x] Deduplicate in-flight server completion requests and release the guard after failure so retries remain possible.
+- [x] Add regression tests for repeated, unknown and already-finished building completion.
 7. [x] Remove duplicate wood-collection quest progress update in the world screen.
 8. [x] Add store tests for one-time collect quest increments in local/demo mode.
 9. [x] Apply the cross-action idempotency-key guard to progression actions, including unique-key race recovery.
