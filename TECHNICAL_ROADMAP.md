@@ -10,6 +10,7 @@
 - Official Telegram Web Apps SDK is loaded by the page; the hook initializes the Mini App, viewport and theme.
 - Frontend accounts for Telegram safe-area insets and stable viewport height.
 - When the API is configured, the game is gated until Telegram authentication and the initial server snapshot succeed; no silent fallback to demo state.
+- JWT sessions are renewed while the Mini App is visible, before the 15-minute access token expires; the original Telegram initData is still limited by server freshness validation.
 - Setup instructions for HTTPS frontend/API, environment variables, database migrations and BotFather are in `docs/TELEGRAM_MINI_APP_SETUP.md`.
 - Frontend supports demo mode when `VITE_API_URL` is not configured.
 - Existing unit tests cover authentication validation and gameplay/progression rules.
@@ -53,10 +54,12 @@
 12. [x] Initialize the Telegram Mini App viewport, theme and vertical-swipe behavior where supported.
 13. [x] Add safe-area and stable-viewport styling for mobile clients.
 14. [x] Gate gameplay when the backend is configured but Telegram authentication or initial server synchronization has not succeeded.
-15. [x] Document deployment configuration and BotFather connection steps.
-16. [ ] Run CI for Telegram integration changes and fix any regressions.
-17. [ ] Deploy the frontend and API with real HTTPS origins and PostgreSQL; verify Telegram login end-to-end.
-18. [ ] Review token expiry/re-authentication and remaining frontend/server synchronization behavior.
+15. [x] Renew short-lived JWT sessions while the Mini App is visible.
+16. [x] Document deployment configuration and BotFather connection steps.
+17. [ ] Verify CI for the complete Telegram integration changes.
+18. [ ] Deploy the frontend and API with real HTTPS origins and PostgreSQL; verify Telegram login end-to-end.
+19. [ ] Verify long-running session behavior when Telegram initData approaches its 24-hour freshness limit.
+20. [ ] Review remaining frontend/server synchronization behavior.
 
 ## Next priorities
 - Verify server authorization, input validation, idempotency and transaction behavior.
