@@ -51,6 +51,7 @@
 - [x] Guard demo-mode building completion against duplicate rewards and quest progress.
 - [x] Deduplicate in-flight server completion requests and release the guard after failure so retries remain possible.
 - [x] Add regression tests for repeated, unknown and already-finished building completion.
+- [x] Keep the building-completion watcher idle when there are no active construction timers; reuse one timestamp per polling tick.
 7. [x] Remove duplicate wood-collection quest progress update in the world screen.
 8. [x] Add store tests for one-time collect quest increments in local/demo mode.
 9. [x] Apply the cross-action idempotency-key guard to progression actions, including unique-key race recovery.
@@ -71,6 +72,7 @@
 ## Next priorities
 - Continue reviewing server authorization, input validation, idempotency and transaction behavior; collection energy and production URL configuration now have explicit guards.
 - Audit timer-driven actions and reward paths for duplicate execution; building completion now has client-side in-flight deduplication and a demo-store idempotency guard.
+- The construction watcher now avoids an always-running interval when the world has no unfinished buildings; countdown rendering remains unchanged.
 - Check Prisma schema/migrations and readiness behavior against a real PostgreSQL instance.
 - Complete an end-to-end Telegram launch after the owner configures hosting secrets and bot URL.
 - Split oversized UI/gameplay modules where it improves maintainability; do not perform blind mechanical refactors.
