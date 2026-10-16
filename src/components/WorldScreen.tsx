@@ -505,7 +505,6 @@ export function WorldScreen() {
     interact,
   } =
     useAuthoritativeGame();
-  const advanceQuest  = useGameStore((s) => s?.advanceQuest ?? (() => {}));
   const addToast      = useGameStore((s) => s?.addToast ?? (() => {}));
 
   const [buildMode, setBuildMode]   = useState(false);
@@ -524,9 +523,8 @@ export function WorldScreen() {
 
   const handleTreeClick = useCallback((tileKey: string, resource: ResourceKey, svgX: number, svgY: number) => {
     collectTile(tileKey, resource, Math.floor(Math.random() * 12) + 10, svgX, svgY - 50);
-    advanceQuest('q_collect', 1);
     setPanel(null);
-  }, [collectTile, advanceQuest]);
+  }, [collectTile]);
 
   const handleStoneClick = useCallback((tileKey: string, svgX: number, svgY: number) => {
     collectTile(tileKey, 'stone', Math.floor(Math.random() * 8) + 5, svgX, svgY - 40);
