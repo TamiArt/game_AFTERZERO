@@ -81,3 +81,54 @@
 - Real Mini App login, database persistence and BotFather launch are verified on deployed HTTPS environments before release readiness is claimed.
 - No source file exceeds 1500 lines.
 - Changes are committed only to the dedicated working branch; do not create a PR unless requested.
+
+## Code hygiene and product work plan (2026-10-16)
+
+### Phase 1 — Safe inventory and baseline
+- [ ] Capture current branch/commit and successful CI state before each cleanup batch.
+- [ ] Generate a complete file inventory and source line-count report; flag files approaching the preferred 300–500 line range and the hard 1500-line ceiling.
+- [ ] Add repeatable checks for unused exports/imports and dependency usage; classify each finding as safe removal, needs runtime verification, or keep.
+- [ ] Establish baseline frontend bundle size and test/build output so optimizations can be compared rather than guessed.
+
+### Phase 2 — Remove residual Figma Make artifacts
+- [x] Remove Figma-specific Vite configuration and `.figma` tooling from the working branch.
+- [x] Remove Figma Make references from package metadata and developer instructions.
+- [ ] Audit `src/imports/` and any generated/pasted files; distinguish source-of-truth game specifications from accidental import artifacts before moving or deleting anything.
+- [ ] Search for remaining Figma-related assets, scripts, lockfile-only packages, comments and generated wrappers; remove only when no active reference remains.
+- [ ] Confirm no runtime/build imports point at Figma tooling and CI remains green.
+
+### Phase 3 — Duplicate and dead-code audit
+- [ ] Trace shared gameplay rules between `src/store/gameStore.ts`, `src/hooks/useAuthoritativeGame.ts`, API clients and server services; keep one authoritative implementation for each rule.
+- [ ] Check repeated resource, quest, cooldown and reward updates for double-application and inconsistent demo/server behavior.
+- [ ] Audit all declared dependencies against actual imports/scripts; remove only packages proven unused, then regenerate and validate `pnpm-lock.yaml`.
+- [ ] Audit unused components, hooks, types, styles, assets, exports and stale feature flags.
+- [ ] Review React effects with suppressed dependency checks and recurring timers for stale closures, unnecessary polling and duplicate requests.
+- [ ] Extract reusable UI only where it reduces real duplication; avoid creating abstractions for one-off markup.
+
+### Phase 4 — Maintainability and runtime performance
+- [ ] Review `src/components/WorldScreen.tsx` (currently about 36 KB) as the first UI decomposition candidate; separate view sections and presentation data without changing gameplay rules.
+- [ ] Review `src/store/gameStore.ts` (currently about 18.5 KB) for domain boundaries and duplicated state transitions.
+- [ ] Review CSS for duplicated selectors/tokens and dead rules; preserve visual behavior while consolidating.
+- [ ] Verify lazy-loaded screens, production bundle composition, unnecessary renders and polling frequency using measurable evidence.
+- [ ] Keep modules focused, prefer 300–500 lines where practical, and never exceed 1500 lines.
+
+### Phase 5 — Reliability and launch readiness
+- [ ] Audit every server mutation for atomic resource/cooldown/reward handling and consistent idempotency.
+- [ ] Verify authorization and DTO validation for every gameplay endpoint.
+- [ ] Verify Prisma migrations and health/readiness checks against PostgreSQL.
+- [ ] Add or improve tests for server/client synchronization, duplicate requests, session expiry, and demo mode.
+- [ ] Perform end-to-end Telegram login and persistence validation after hosting/BotFather configuration is available.
+
+### Phase 6 — Reference-led UI improvements
+- [ ] Inspect the exact Pinterest pin visually before translating it into design changes; do not infer its appearance from unrelated search results.
+- [ ] Map each reference pattern to a specific AFTERZERO screen and describe the intended change before implementation.
+- [ ] Prioritize mobile hierarchy, readable resource/status indicators, touch targets, navigation clarity and consistent reusable surfaces.
+- [ ] Preserve the current dark navy/teal visual identity unless the reference clearly justifies a deliberate change.
+- [ ] Validate mobile viewport, safe areas, reduced motion, contrast and loading/error states after UI changes.
+
+### First-pass observations (not yet removal decisions)
+- Root `package.json` currently contains no obvious Figma-named dependency, and the current `vite.config.ts` uses standard React/Vite/Tailwind plugins. Figma cleanup therefore needs to focus on indirect/generated artifacts and actual import reachability, not blindly uninstalling packages.
+- `src/imports/` contains a very small `image.png` plus three Markdown files (`afterzero-spec.md`, `afterzero-tech-spec.md`, `game-design-doc.md`). These files need reference tracing and ownership classification; the specifications may be valuable source material and must not be deleted just because of their location.
+- `src/components/WorldScreen.tsx` is about 36 KB and `src/store/gameStore.ts` about 18.5 KB. These are audit/refactoring candidates, not proof of dead code.
+- `src/App.tsx` contains a returning-player toast effect whose dependency list is intentionally suppressed; review the closure and timing behavior before altering it.
+- The current branch CI run `38897470596` for commit `89147b111eb931ac9c2d67707850a8465ef697d4` passed. This confirms build/test checks only, not production or Telegram end-to-end readiness.
