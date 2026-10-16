@@ -51,6 +51,9 @@ export async function authenticateTelegram(
   }
 
   const session = (await response.json()) as BackendSession;
+  if (signal?.aborted) {
+    throw new DOMException('Authentication was cancelled', 'AbortError');
+  }
   sessionStorage.setItem('afterzero.accessToken', session.accessToken);
   return session;
 }
