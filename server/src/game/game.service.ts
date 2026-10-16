@@ -301,6 +301,11 @@ export class GameService {
               where: { playerId_key: { playerId, key } },
             });
             if (previous) {
+              if (previous.kind !== kind) {
+                throw new ConflictException(
+                  'Request ID was already used for a different action',
+                );
+              }
               return previous.response as unknown as GameSnapshot;
             }
 
@@ -325,7 +330,14 @@ export class GameService {
           const previous = await this.prisma.gameAction.findUnique({
             where: { playerId_key: { playerId, key } },
           });
-          if (previous) return previous.response as unknown as GameSnapshot;
+          if (previous) {
+            if (previous.kind !== kind) {
+              throw new ConflictException(
+                'Request ID was already used for a different action',
+              );
+            }
+            return previous.response as unknown as GameSnapshot;
+          }
         }
         if (
           !(
