@@ -103,10 +103,16 @@ export class ProgressionService {
       }
 
       const item = available[randomInt(available.length)];
-      await tx.resourceBalance.update({
-        where: { worldId: world.id },
+      // The earlier balance check gives a friendly error, but another
+      // request may spend energy before this transaction reaches the debit.
+      // Keep the balance invariant in the write itself.
+      const debit = await tx.resourceBalance.updateMany({
+        where: { worldId: world.id, energy: { gte: 10 } },
         data: { energy: { decrement: 10 } },
       });
+      if (debit.count !== 1) {
+        throw new BadRequestException('Not enough energy');
+      }
       await tx.world.update({
         where: { id: world.id },
         data: { foundItems: [...world.foundItems, item] },
