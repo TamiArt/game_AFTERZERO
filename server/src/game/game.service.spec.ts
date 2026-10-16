@@ -329,6 +329,66 @@ describe('GameService idempotency', () => {
     expect(transaction.gameAction.create).not.toHaveBeenCalled();
   });
 
+  it('does not grant a daily reward when another claim wins during retry', async () => {
+    const serializationError = new Prisma.PrismaClientKnownRequestError(
+      'Serialization failure',
+      { code: 'P2034', clientVersion: 'test' },
+    );
+    const world = {
+      id: 'world-1',
+      level: 1,
+      xp: 0,
+      lastDailyClaimAt: null as Date | null,
+      resources: { wood: 10, stone: 0, metal: 0, energy: 10 },
+      buildings: [],
+      pet: null,
+      foundItems: [],
+      claimedQuests: [],
+      woodCollects: 0,
+      stoneCollects: 0,
+      dailyCollects: 0,
+      ruinsVisits: 0,
+      portalInteracts: 0,
+      totalBuilt: 0,
+      petCareCount: 0,
+      friendVisited: false,
+    };
+    const transactionClient = {
+      gameAction: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        create: vi.fn(),
+      },
+      world: {
+        findFirst: vi.fn().mockImplementation(async () => world),
+        update: vi.fn(),
+      },
+      resourceBalance: { update: vi.fn() },
+    };
+    const transaction = vi
+      .fn()
+      .mockImplementationOnce(async () => {
+        // Simulate a concurrent daily claim committing while this transaction
+        // is aborted by PostgreSQL's serializable isolation.
+        world.lastDailyClaimAt = new Date();
+        throw serializationError;
+      })
+      .mockImplementationOnce(
+        async (callback: (client: typeof transactionClient) => Promise<unknown>) =>
+          callback(transactionClient),
+      );
+    const prisma = { $transaction: transaction } as unknown as PrismaService;
+    const service = new GameService(prisma);
+
+    await expect(
+      service.claimDaily('player-1', 'daily-race-retry'),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    expect(transaction).toHaveBeenCalledTimes(2);
+    expect(transactionClient.resourceBalance.update).not.toHaveBeenCalled();
+    expect(transactionClient.world.update).not.toHaveBeenCalled();
+    expect(transactionClient.gameAction.create).not.toHaveBeenCalled();
+  });
+
   it('does not debit a building when the atomic balance guard fails', async () => {
     const transaction = {
       gameAction: {
