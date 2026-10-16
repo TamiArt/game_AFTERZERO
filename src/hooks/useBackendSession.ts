@@ -148,14 +148,15 @@ export function useBackendSession(
     };
 
     const handleOnline = () => refresh(true);
+    const handleVisibilityChange = () => refresh();
     const interval = window.setInterval(refresh, 60_000);
-    document.addEventListener('visibilitychange', refresh);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('online', handleOnline);
     return () => {
       disposed = true;
       refreshController?.abort();
       window.clearInterval(interval);
-      document.removeEventListener('visibilitychange', refresh);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('online', handleOnline);
     };
   }, [initData, state.status]);
