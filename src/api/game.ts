@@ -113,7 +113,10 @@ function progressionRequest(
   body: object,
 ): Promise<GameSnapshot> {
   const token = sessionStorage.getItem(TOKEN_KEY);
-  if (!apiUrl || !token) throw new GameApiError('Backend session is unavailable', 401);
+  if (!apiUrl || !token) {
+    if (apiUrl && !token) expireSession();
+    throw new GameApiError('Backend session is unavailable', 401);
+  }
   return fetch(`${apiUrl}/progression${path}`, {
     method: 'POST',
     headers: {
