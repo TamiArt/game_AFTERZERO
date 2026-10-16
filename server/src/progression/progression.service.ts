@@ -41,7 +41,11 @@ export class ProgressionService {
     playerId: string,
     input: ClaimQuestDto,
   ): Promise<GameSnapshot> {
-    await this.runAction(playerId, input.requestId, 'quest', async (tx) => {
+    await this.runAction(
+      playerId,
+      input.requestId,
+      `quest:${input.questId}`,
+      async (tx) => {
       const world = await this.requireWorld(tx, playerId);
       const rule = QUEST_RULES[input.questId];
       if (!rule || world.level < rule.minimumLevel) {
