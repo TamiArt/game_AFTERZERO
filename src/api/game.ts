@@ -82,7 +82,7 @@ export function isGameBackendConfigured(): boolean {
 
 async function gameRequest(
   path: string,
-  options?: { body?: object; method?: 'GET' | 'POST' },
+  options?: { body?: object; method?: 'GET' | 'POST'; signal?: AbortSignal },
 ): Promise<GameSnapshot> {
   const token = sessionStorage.getItem(TOKEN_KEY);
   if (!apiUrl || !token) {
@@ -97,6 +97,7 @@ async function gameRequest(
       ...(options?.body ? { 'Content-Type': 'application/json' } : {}),
     },
     body: options?.body ? JSON.stringify(options.body) : undefined,
+    signal: options?.signal,
   });
   if (!response.ok) {
     if (response.status === 401) expireSession();
@@ -143,8 +144,8 @@ function requestId(): string {
   return crypto.randomUUID();
 }
 
-export function getGameState(): Promise<GameSnapshot> {
-  return gameRequest('/state');
+export function getGameState(signal?: AbortSignal): Promise<GameSnapshot> {
+  return gameRequest('/state', { signal });
 }
 
 export function collectResource(nodeId: string): Promise<GameSnapshot> {
