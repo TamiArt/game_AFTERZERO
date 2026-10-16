@@ -5,6 +5,7 @@ import {
   isBackendConfigured,
 } from '../api/auth';
 import { getGameState } from '../api/game';
+import { refreshAuthoritativeSession } from '../api/sessionLifecycle';
 import { useGameStore } from '../store/gameStore';
 
 type SessionStatus =
@@ -107,14 +108,17 @@ export function useBackendSession(
       refreshController = new AbortController();
       const signal = refreshController.signal;
 
-      void authenticateTelegram(initData, signal)
-        .then(async (session) => {
-          const snapshot = await getGameState();
-          if (disposed || signal.aborted) return;
-          useGameStore.getState().syncServerState(snapshot);
-          setState({ error: null, session, status: 'authenticated' });
-        })
-        .catch((error: unknown) => {
+      void refreshAuthoritativeSession({
+        authenticate: (refreshSignal) =>
+          authenticateTelegram(initData, refreshSignal),
+        getSnapshot: getGameState,
+        signal,
+        isCurrent: () => !disposed,
+        applySnapshot: (snapshot) =>
+          useGameStore.getState().syncServerState(snapshot),
+        onSession: (session) =>
+          setState({ error: null, session, status: 'authenticated' }),
+      }).catch((error: unknown) => {
           if (
             disposed ||
             signal.aborted ||
