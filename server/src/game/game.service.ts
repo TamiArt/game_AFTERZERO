@@ -39,11 +39,31 @@ const PRODUCTION_INTERVAL_MS = 30_000;
 export class GameService {
   constructor(private readonly prisma: PrismaService) {}
 
-  getState(playerId: string): Promise<GameSnapshot> {
-    return this.prisma.$transaction(async (transaction) => {
-      await this.completeReadyBuildings(transaction, playerId, new Date());
-      return this.snapshot(transaction, playerId);
-    });
+  async getState(playerId: string): Promise<GameSnapshot> {
+    // Reading the world can complete buildings and award XP, so this is a
+    // write-capable transaction. Serializable isolation prevents concurrent
+    // state refreshes from applying rewards from the same stale world snapshot.
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        return await this.prisma.$transaction(
+          async (transaction) => {
+            await this.completeReadyBuildings(transaction, playerId, new Date());
+            return this.snapshot(transaction, playerId);
+          },
+          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        );
+      } catch (error) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2034' &&
+          attempt < 2
+        ) {
+          continue;
+        }
+        throw error;
+      }
+    }
+    throw new ConflictException('World state could not be synchronized');
   }
 
   collect(
