@@ -148,17 +148,48 @@ describe('GameService idempotency', () => {
       'Serialization failure',
       { code: 'P2034', clientVersion: 'test' },
     );
-    const finalError = new Error('second transaction failed');
+    const world = {
+      id: 'world-1',
+      name: 'Afterzero',
+      level: 1,
+      xp: 0,
+      lastDailyClaimAt: null,
+      resources: { wood: 25, stone: 10, metal: 0, energy: 20 },
+      buildings: [],
+      pet: null,
+      foundItems: [],
+      woodCollects: 0,
+      stoneCollects: 0,
+      ruinsVisits: 0,
+      portalInteracts: 0,
+      totalBuilt: 0,
+      petCareCount: 0,
+      friendVisited: false,
+      claimedQuests: [],
+    };
+    const transactionClient = {
+      world: { findFirst: vi.fn().mockResolvedValue(world) },
+      building: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      resourceNodeCooldown: { findMany: vi.fn().mockResolvedValue([]) },
+    };
     const transaction = vi
       .fn()
       .mockRejectedValueOnce(serializationError)
-      .mockRejectedValueOnce(finalError);
+      .mockImplementationOnce(
+        async (callback: (client: typeof transactionClient) => Promise<unknown>) =>
+          callback(transactionClient),
+      );
     const prisma = {
       $transaction: transaction,
     } as unknown as PrismaService;
     const service = new GameService(prisma);
 
-    await expect(service.getState('player-1')).rejects.toBe(finalError);
+    await expect(service.getState('player-1')).resolves.toMatchObject({
+      world: {
+        id: 'world-1',
+        resources: { wood: 25, stone: 10, metal: 0, energy: 20 },
+      },
+    });
 
     expect(transaction).toHaveBeenCalledTimes(2);
     expect(transaction).toHaveBeenNthCalledWith(
