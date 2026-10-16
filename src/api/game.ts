@@ -1,3 +1,5 @@
+import { notifySessionExpired } from './sessionLifecycle';
+
 export interface GameSnapshot {
   world: {
     id: string;
@@ -49,8 +51,6 @@ export interface GameSnapshot {
 
 const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/$/, '');
 const TOKEN_KEY = 'afterzero.accessToken';
-
-import { notifySessionExpired } from './sessionLifecycle';
 
 function expireSession(): void {
   notifySessionExpired({
