@@ -14,6 +14,56 @@ const REQUIRED_KEYS = [
   'WEB_APP_ORIGIN',
 ] as const;
 
+function parseWebAppOrigin(value: unknown, nodeEnvironment: string): string {
+  const origin = String(value ?? '');
+  let parsed: URL;
+
+  try {
+    parsed = new URL(origin);
+  } catch {
+    throw new Error('WEB_APP_ORIGIN must be a valid absolute URL');
+  }
+
+  if (
+    !['http:', 'https:'].includes(parsed.protocol) ||
+    parsed.username ||
+    parsed.password ||
+    (parsed.pathname !== '/' && parsed.pathname !== '') ||
+    parsed.search ||
+    parsed.hash
+  ) {
+    throw new Error('WEB_APP_ORIGIN must contain only an HTTP(S) origin');
+  }
+
+  if (nodeEnvironment === 'production' && parsed.protocol !== 'https:') {
+    throw new Error('WEB_APP_ORIGIN must use HTTPS in production');
+  }
+
+  return parsed.origin;
+}
+
+function validateDatabaseUrl(value: unknown): string {
+  const databaseUrl = String(value ?? '');
+  let parsed: URL;
+
+  try {
+    parsed = new URL(databaseUrl);
+  } catch {
+    throw new Error('DATABASE_URL must be a valid PostgreSQL connection URL');
+  }
+
+  if (
+    !['postgres:', 'postgresql:'].includes(parsed.protocol) ||
+    !parsed.hostname ||
+    !parsed.pathname ||
+    parsed.pathname === '/'
+  ) {
+    throw new Error('DATABASE_URL must be a valid PostgreSQL connection URL');
+  }
+
+  return databaseUrl;
+}
+
 export function validateEnvironment(config: Record<string, unknown>): Environment {
   const missingKeys = REQUIRED_KEYS.filter((key) => !config[key]);
   if (missingKeys.length > 0) {
@@ -37,10 +87,10 @@ export function validateEnvironment(config: Record<string, unknown>): Environmen
 
   return {
     API_PORT: apiPort,
-    DATABASE_URL: String(config.DATABASE_URL),
+    DATABASE_URL: validateDatabaseUrl(config.DATABASE_URL),
     JWT_SECRET: jwtSecret,
     NODE_ENV: nodeEnvironment as Environment['NODE_ENV'],
     TELEGRAM_BOT_TOKEN: String(config.TELEGRAM_BOT_TOKEN),
-    WEB_APP_ORIGIN: String(config.WEB_APP_ORIGIN),
+    WEB_APP_ORIGIN: parseWebAppOrigin(config.WEB_APP_ORIGIN, nodeEnvironment),
   };
 }
