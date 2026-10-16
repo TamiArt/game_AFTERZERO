@@ -154,6 +154,60 @@ describe('GameService idempotency', () => {
     expect(operation).toHaveBeenCalledTimes(1);
   });
 
+  it('retries a game mutation after a serializable transaction conflict', async () => {
+    const serializationError = new Prisma.PrismaClientKnownRequestError(
+      'Serialization failure',
+      { code: 'P2034', clientVersion: 'test' },
+    );
+    const snapshot = { world: { id: 'world-1', level: 2 } };
+    const transactionClient = {
+      gameAction: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockResolvedValue({}),
+      },
+    };
+    const transaction = vi
+      .fn()
+      .mockRejectedValueOnce(serializationError)
+      .mockImplementationOnce(
+        async (callback: (client: typeof transactionClient) => Promise<unknown>) =>
+          callback(transactionClient),
+      );
+    const prisma = { $transaction: transaction } as unknown as PrismaService;
+    const service = new GameService(prisma);
+    const operation = vi.fn().mockResolvedValue(snapshot);
+
+    await expect(
+      (service as unknown as IdempotentRunner).idempotent(
+        'player-1',
+        'request-retry',
+        'collect:2,3',
+        operation,
+      ),
+    ).resolves.toEqual(snapshot);
+
+    expect(transaction).toHaveBeenCalledTimes(2);
+    expect(operation).toHaveBeenCalledTimes(1);
+    expect(transactionClient.gameAction.create).toHaveBeenCalledWith({
+      data: {
+        playerId: 'player-1',
+        key: 'request-retry',
+        kind: 'collect:2,3',
+        response: snapshot,
+      },
+    });
+    expect(transaction).toHaveBeenNthCalledWith(
+      1,
+      expect.any(Function),
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+    expect(transaction).toHaveBeenNthCalledWith(
+      2,
+      expect.any(Function),
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+  });
+
   it('retries world-state reads after a serializable transaction conflict', async () => {
     const serializationError = new Prisma.PrismaClientKnownRequestError(
       'Serialization failure',
