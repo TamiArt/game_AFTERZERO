@@ -36,6 +36,28 @@ export function useBackendSession(
   const refreshInFlight = useRef(false);
 
   useEffect(() => {
+    const expireSession = () => {
+      setState({
+        error: 'Игровая сессия истекла. Откройте приложение заново через Telegram.',
+        session: null,
+        status: 'error',
+      });
+    };
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === ACCESS_TOKEN_KEY && event.newValue === null) {
+        expireSession();
+      }
+    };
+
+    window.addEventListener('afterzero:session-expired', expireSession);
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      window.removeEventListener('afterzero:session-expired', expireSession);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!isBackendConfigured() || !telegramReady || !initData) return;
 
     const controller = new AbortController();
