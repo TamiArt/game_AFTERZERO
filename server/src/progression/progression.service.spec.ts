@@ -1,4 +1,4 @@
-import { ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { PrismaService } from '../database/prisma.service.js';
 import { ProgressionService } from './progression.service.js';
@@ -59,4 +59,47 @@ describe('ProgressionService idempotency', () => {
     );
     expect(operation).not.toHaveBeenCalled();
   });
+  it('does not discover an item when the atomic energy guard fails', async () => {
+    const transaction = {
+      gameAction: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        create: vi.fn(),
+      },
+      world: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: 'world-1',
+          level: 1,
+          resources: { energy: 10 },
+          foundItems: ['i8'],
+          pet: null,
+        }),
+        update: vi.fn(),
+      },
+      resourceBalance: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+      },
+    };
+    const prisma = {
+      $transaction: vi.fn(
+        async (callback: (client: typeof transaction) => Promise<unknown>) =>
+          callback(transaction),
+      ),
+      gameAction: {
+        findUnique: vi.fn().mockResolvedValue(null),
+      },
+    } as unknown as PrismaService;
+    const service = new ProgressionService(prisma, {} as GameService);
+
+    await expect(
+      service.exploreCollection('player-1', 'request-collection-1'),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(transaction.resourceBalance.updateMany).toHaveBeenCalledWith({
+      where: { worldId: 'world-1', energy: { gte: 10 } },
+      data: { energy: { decrement: 10 } },
+    });
+    expect(transaction.world.update).not.toHaveBeenCalled();
+    expect(transaction.gameAction.create).not.toHaveBeenCalled();
+  });
+
 });
