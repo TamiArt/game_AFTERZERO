@@ -38,8 +38,10 @@
 1. [x] Reject reuse of an idempotency key for a different game action.
 2. [x] Add regression tests for same-action replay and cross-action key reuse.
 3. [x] Verify CI passes with the regression tests.
-4. [ ] Review transaction boundaries and concurrent resource/building updates.
-5. [ ] Audit frontend state synchronization and split large screens only where safe.
+4. [x] Make building resource debits conditional and atomic; reject the transaction if the current balance is insufficient.
+5. [x] Add a regression test for a failed atomic balance guard.
+6. [ ] Review remaining transaction boundaries and concurrent resource/cooldown updates.
+7. [ ] Audit frontend state synchronization and split large screens only where safe.
 
 ## Next priorities
 - Verify server authorization, input validation, idempotency and transaction behavior.
