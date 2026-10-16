@@ -37,7 +37,7 @@
 ## Current iteration: correctness and maintainability
 1. [x] Reject reuse of an idempotency key for a different game action.
 2. [x] Add regression tests for same-action replay and cross-action key reuse.
-3. [ ] Verify the latest CI run passes with the regression tests.
+3. [x] Verify CI passes with the regression tests.
 4. [ ] Review transaction boundaries and concurrent resource/building updates.
 5. [ ] Audit frontend state synchronization and split large screens only where safe.
 
