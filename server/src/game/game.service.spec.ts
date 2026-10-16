@@ -329,6 +329,74 @@ describe('GameService idempotency', () => {
     expect(transaction.gameAction.create).not.toHaveBeenCalled();
   });
 
+  it('rejects a resource collection when a competing request starts the cooldown', async () => {
+    const serializationError = new Prisma.PrismaClientKnownRequestError(
+      'Serialization failure',
+      { code: 'P2034', clientVersion: 'test' },
+    );
+    const world = {
+      id: 'world-1',
+      level: 1,
+      xp: 0,
+      resources: { wood: 10, stone: 0, metal: 0, energy: 10 },
+      buildings: [],
+      pet: null,
+      foundItems: [],
+      claimedQuests: [],
+      woodCollects: 0,
+      stoneCollects: 0,
+      dailyCollects: 0,
+      dailyProgressDate: null,
+      ruinsVisits: 0,
+      portalInteracts: 0,
+      totalBuilt: 0,
+      petCareCount: 0,
+      friendVisited: false,
+      lastDailyClaimAt: null,
+    };
+    let cooldown: { availableAt: Date } | null = null;
+    const transactionClient = {
+      gameAction: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        create: vi.fn(),
+      },
+      world: {
+        findFirst: vi.fn().mockImplementation(async () => world),
+        update: vi.fn(),
+      },
+      resourceBalance: { update: vi.fn() },
+      resourceNodeCooldown: {
+        findUnique: vi.fn().mockImplementation(async () => cooldown),
+        upsert: vi.fn(),
+      },
+    };
+    const transaction = vi
+      .fn()
+      .mockImplementationOnce(async () => {
+        cooldown = { availableAt: new Date(Date.now() + 30_000) };
+        throw serializationError;
+      })
+      .mockImplementationOnce(
+        async (callback: (client: typeof transactionClient) => Promise<unknown>) =>
+          callback(transactionClient),
+      );
+    const prisma = { $transaction: transaction } as unknown as PrismaService;
+    const service = new GameService(prisma);
+
+    await expect(
+      service.collect('player-1', {
+        requestId: 'collect-race-retry',
+        nodeId: '2,3',
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    expect(transaction).toHaveBeenCalledTimes(2);
+    expect(transactionClient.world.update).not.toHaveBeenCalled();
+    expect(transactionClient.resourceBalance.update).not.toHaveBeenCalled();
+    expect(transactionClient.resourceNodeCooldown.upsert).not.toHaveBeenCalled();
+    expect(transactionClient.gameAction.create).not.toHaveBeenCalled();
+  });
+
   it('does not grant a daily reward when another claim wins during retry', async () => {
     const serializationError = new Prisma.PrismaClientKnownRequestError(
       'Serialization failure',
