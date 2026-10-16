@@ -156,10 +156,20 @@ export class GameService {
         throw error;
       }
 
-      await tx.resourceBalance.update({
-        where: { worldId: world.id },
+      // Check affordability and debit in one database statement. The earlier
+      // snapshot is useful for a friendly error, but it may be stale when two
+      // build requests race for the same resource balance.
+      const debit = await tx.resourceBalance.updateMany({
+        where: {
+          worldId: world.id,
+          ...this.resourceMinimums(rule.cost),
+        },
         data: this.resourceDecrements(rule.cost),
       });
+      if (debit.count !== 1) {
+        throw new BadRequestException('Not enough resources');
+      }
+
       const experience = addExperience(world.level, world.xp, 15);
       await tx.world.update({ where: { id: world.id }, data: experience });
       return this.snapshot(tx, playerId);
@@ -503,6 +513,17 @@ export class GameService {
         { decrement: amount },
       ]),
     );
+  }
+
+  private resourceMinimums(
+    cost: Partial<ResourceAmounts>,
+  ): Prisma.ResourceBalanceWhereInput {
+    return Object.fromEntries(
+      Object.entries(cost).map(([resource, amount]) => [
+        resource,
+        { gte: amount },
+      ]),
+    ) as Prisma.ResourceBalanceWhereInput;
   }
 
   private resourceIncrements(amounts: ResourceAmounts) {
