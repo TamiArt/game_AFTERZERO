@@ -1,0 +1,42 @@
+-- AlterTable
+ALTER TABLE "World"
+ADD COLUMN "woodCollects" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN "stoneCollects" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN "dailyCollects" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN "dailyProgressDate" TIMESTAMP(3),
+ADD COLUMN "ruinsVisits" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN "portalInteracts" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN "totalBuilt" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN "petCareCount" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN "friendVisited" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN "claimedQuests" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+ADD COLUMN "foundItems" TEXT[] NOT NULL DEFAULT ARRAY['i8']::TEXT[];
+
+-- CreateTable
+CREATE TABLE "Pet" (
+    "id" UUID NOT NULL,
+    "worldId" UUID NOT NULL,
+    "name" TEXT NOT NULL DEFAULT 'Нокс',
+    "species" TEXT NOT NULL DEFAULT 'Лисица-призрак',
+    "level" INTEGER NOT NULL DEFAULT 1,
+    "xp" INTEGER NOT NULL DEFAULT 0,
+    "hunger" DOUBLE PRECISION NOT NULL DEFAULT 80,
+    "mood" DOUBLE PRECISION NOT NULL DEFAULT 75,
+    "health" DOUBLE PRECISION NOT NULL DEFAULT 90,
+    "lastUpdated" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Pet_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Pet_worldId_key" ON "Pet"("worldId");
+
+-- Backfill
+INSERT INTO "Pet" ("id", "worldId")
+SELECT "id", "id" FROM "World";
+
+-- AddForeignKey
+ALTER TABLE "Pet"
+ADD CONSTRAINT "Pet_worldId_fkey"
+FOREIGN KEY ("worldId") REFERENCES "World"("id")
+ON DELETE CASCADE ON UPDATE CASCADE;

@@ -1,0 +1,114 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Player {
+  id           String   @id @default(uuid()) @db.Uuid
+  telegramId   BigInt   @unique
+  firstName    String
+  lastName     String?
+  username     String?
+  photoUrl     String?
+  languageCode String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  world        World?
+  actions      GameAction[]
+
+  @@index([username])
+}
+
+model World {
+  id        String          @id @default(uuid()) @db.Uuid
+  ownerId   String          @unique @db.Uuid
+  name      String
+  level     Int             @default(1)
+  xp        Int             @default(0)
+  woodCollects Int          @default(0)
+  stoneCollects Int         @default(0)
+  dailyCollects Int         @default(0)
+  dailyProgressDate DateTime?
+  ruinsVisits Int           @default(0)
+  portalInteracts Int       @default(0)
+  totalBuilt Int            @default(0)
+  petCareCount Int          @default(0)
+  friendVisited Boolean     @default(false)
+  claimedQuests String[]    @default([])
+  foundItems String[]       @default(["i8"])
+  lastDailyClaimAt DateTime?
+  lastProductionAt DateTime @default(now())
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  owner     Player          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  resources ResourceBalance?
+  buildings Building[]
+  cooldowns ResourceNodeCooldown[]
+  pet       Pet?
+}
+
+model ResourceBalance {
+  id       String @id @default(uuid()) @db.Uuid
+  worldId  String @unique @db.Uuid
+  wood     Int    @default(40)
+  stone    Int    @default(0)
+  metal    Int    @default(0)
+  energy   Int    @default(50)
+  world    World  @relation(fields: [worldId], references: [id], onDelete: Cascade)
+}
+
+model Building {
+  id          String    @id @default(uuid()) @db.Uuid
+  worldId     String    @db.Uuid
+  type        String
+  tileC       Int
+  tileR       Int
+  startedAt   DateTime  @default(now())
+  completesAt DateTime
+  completedAt DateTime?
+  world       World     @relation(fields: [worldId], references: [id], onDelete: Cascade)
+
+  @@unique([worldId, tileC, tileR])
+  @@index([worldId, completesAt])
+}
+
+model ResourceNodeCooldown {
+  id          String   @id @default(uuid()) @db.Uuid
+  worldId     String   @db.Uuid
+  nodeKey     String
+  availableAt DateTime
+  world       World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+
+  @@unique([worldId, nodeKey])
+}
+
+model GameAction {
+  id        String   @id @default(uuid()) @db.Uuid
+  playerId  String   @db.Uuid
+  key       String
+  kind      String
+  response  Json
+  createdAt DateTime @default(now())
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([playerId, key])
+  @@index([createdAt])
+}
+
+model Pet {
+  id          String   @id @default(uuid()) @db.Uuid
+  worldId     String   @unique @db.Uuid
+  name        String   @default("Нокс")
+  species     String   @default("Лисица-призрак")
+  level       Int      @default(1)
+  xp          Int      @default(0)
+  hunger      Float    @default(80)
+  mood        Float    @default(75)
+  health      Float    @default(90)
+  lastUpdated DateTime @default(now())
+  world       World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+}
