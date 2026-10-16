@@ -42,32 +42,34 @@
 7. [x] Verify CI completed successfully for the baseline cleanup.
 
 ## Current iteration: correctness and Telegram launch
+- [x] Created follow-up branch `fix/server-state-concurrency` from the latest audited branch; `main` remains untouched.
 1. [x] Reject reuse of an idempotency key for a different game action.
 2. [x] Add regression tests for same-action replay and cross-action key reuse.
 3. [x] Verify CI passes with the regression tests.
 4. [x] Make building resource debits conditional and atomic; reject the transaction if the current balance is insufficient.
 5. [x] Add a regression test for a failed atomic balance guard.
-6. [ ] Review remaining transaction boundaries and concurrent resource/cooldown updates.
+6. [x] Make world-state refresh serializable because it can complete buildings and award XP; retry PostgreSQL serialization conflicts up to three attempts, with a regression test.
+7. [ ] Review remaining transaction boundaries and concurrent resource/cooldown updates.
 - [x] Guard demo-mode building completion against duplicate rewards and quest progress.
 - [x] Deduplicate in-flight server completion requests and release the guard after failure so retries remain possible.
 - [x] Add regression tests for repeated, unknown and already-finished building completion.
 - [x] Keep the building-completion watcher idle when there are no active construction timers; reuse one timestamp per polling tick.
-7. [x] Remove duplicate wood-collection quest progress update in the world screen.
-8. [x] Add store tests for one-time collect quest increments in local/demo mode.
-9. [x] Apply the cross-action idempotency-key guard to progression actions, including unique-key race recovery.
-10. [x] Add progression idempotency regression tests.
-11. [x] Load the official Telegram Web Apps SDK before the React app.
-12. [x] Initialize the Telegram Mini App viewport, theme and vertical-swipe behavior where supported.
-13. [x] Add safe-area and stable-viewport styling for mobile clients.
-14. [x] Gate gameplay when the backend is configured but Telegram authentication or initial server synchronization has not succeeded.
-15. [x] Renew short-lived JWT sessions while the Mini App is visible.
-16. [x] Document deployment configuration and BotFather connection steps.
-17. [x] Verify CI for the Telegram integration changes; the branch build and tests passed on the current integration commit.
-18. [ ] Deploy the frontend and API with real HTTPS origins and PostgreSQL; verify Telegram login end-to-end.
-19. [ ] Verify long-running session behavior when Telegram initData approaches its 24-hour freshness limit.
-20. [ ] Review remaining frontend/server synchronization behavior.
-21. [x] Make collection energy debit atomic and add a regression test for a failed balance guard.
-22. [x] Validate the web app origin and PostgreSQL connection URL at startup; require HTTPS for production origins and cover validation with tests.
+8. [x] Remove duplicate wood-collection quest progress update in the world screen.
+9. [x] Add store tests for one-time collect quest increments in local/demo mode.
+10. [x] Apply the cross-action idempotency-key guard to progression actions, including unique-key race recovery.
+11. [x] Add progression idempotency regression tests.
+12. [x] Load the official Telegram Web Apps SDK before the React app.
+13. [x] Initialize the Telegram Mini App viewport, theme and vertical-swipe behavior where supported.
+14. [x] Add safe-area and stable-viewport styling for mobile clients.
+15. [x] Gate gameplay when the backend is configured but Telegram authentication or initial server synchronization has not succeeded.
+16. [x] Renew short-lived JWT sessions while the Mini App is visible.
+17. [x] Document deployment configuration and BotFather connection steps.
+18. [x] Verify CI for the Telegram integration changes; the branch build and tests passed on the current integration commit.
+19. [ ] Deploy the frontend and API with real HTTPS origins and PostgreSQL; verify Telegram login end-to-end.
+20. [ ] Verify long-running session behavior when Telegram initData approaches its 24-hour freshness limit.
+21. [ ] Review remaining frontend/server synchronization behavior.
+22. [x] Make collection energy debit atomic and add a regression test for a failed balance guard.
+23. [x] Validate the web app origin and PostgreSQL connection URL at startup; require HTTPS for production origins and cover validation with tests.
 
 ## Next priorities
 - Continue reviewing server authorization, input validation, idempotency and transaction behavior; collection energy and production URL configuration now have explicit guards.
