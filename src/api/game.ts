@@ -50,6 +50,13 @@ export interface GameSnapshot {
 const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/$/, '');
 const TOKEN_KEY = 'afterzero.accessToken';
 
+function expireSession(): void {
+  sessionStorage.removeItem(TOKEN_KEY);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('afterzero:session-expired'));
+  }
+}
+
 export class GameApiError extends Error {
   constructor(
     message: string,
@@ -83,7 +90,7 @@ async function gameRequest(
     body: options?.body ? JSON.stringify(options.body) : undefined,
   });
   if (!response.ok) {
-    if (response.status === 401) sessionStorage.removeItem(TOKEN_KEY);
+    if (response.status === 401) expireSession();
     const payload = (await response.json().catch(() => null)) as {
       message?: string;
     } | null;
