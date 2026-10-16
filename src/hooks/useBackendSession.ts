@@ -148,7 +148,9 @@ export function useBackendSession(
     };
 
     const handleOnline = () => refresh(true);
-    const handleVisibilityChange = () => refresh();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') refresh(true);
+    };
     const interval = window.setInterval(refresh, 60_000);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('online', handleOnline);
