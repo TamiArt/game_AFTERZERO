@@ -16,7 +16,7 @@ export function notifySessionExpired({
 
 export interface AuthoritativeRefreshOptions<TSession, TSnapshot> {
   authenticate: (signal: AbortSignal) => Promise<TSession>;
-  getSnapshot: () => Promise<TSnapshot>;
+  getSnapshot: (signal: AbortSignal) => Promise<TSnapshot>;
   signal: AbortSignal;
   isCurrent: () => boolean;
   applySnapshot: (snapshot: TSnapshot) => void;
@@ -33,7 +33,7 @@ export async function refreshAuthoritativeSession<TSession, TSnapshot>({
   onSession,
 }: AuthoritativeRefreshOptions<TSession, TSnapshot>): Promise<void> {
   const session = await authenticate(signal);
-  const snapshot = await getSnapshot();
+  const snapshot = await getSnapshot(signal);
   if (signal.aborted || !isCurrent()) return;
   applySnapshot(snapshot);
   onSession(session);
