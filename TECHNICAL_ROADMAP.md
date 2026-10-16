@@ -51,6 +51,7 @@
 6. [x] Make world-state refresh serializable because it can complete buildings and award XP; retry PostgreSQL serialization conflicts up to three attempts, with a regression test.
 7. [x] Enforce pet-care thresholds on the API as well as in the UI, preventing repeated feeding/resting at near-full stats from farming actions and quest progress; add regression tests.
 8. [x] Add a regression test proving progression mutations retry after a PostgreSQL serializable transaction conflict and execute the action only once after the retry.
+9. [x] Cover Telegram initData timestamp boundaries: malformed timestamps and timestamps more than 60 seconds in the future are rejected.
 8. [ ] Review remaining transaction boundaries and concurrent resource/cooldown updates.
 - [x] Guard demo-mode building completion against duplicate rewards and quest progress.
 - [x] Deduplicate in-flight server completion requests and release the guard after failure so retries remain possible.
