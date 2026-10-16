@@ -57,6 +57,17 @@ describe('GameService idempotency', () => {
     );
   });
 
+  it('rejects reusing a request key for a different building target', async () => {
+    const service = createService({
+      kind: 'build:garden:2:3',
+      response: { world: { id: 'world-1' } },
+    });
+
+    await expect(runIdempotent(service, 'build:house:2:3')).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+  });
+
   it('replays the winning response when concurrent requests race on the same key', async () => {
     const snapshot = { world: { id: 'world-1', level: 2 } };
     const uniqueConflict = new Prisma.PrismaClientKnownRequestError(
