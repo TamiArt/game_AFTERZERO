@@ -230,7 +230,10 @@ describe('GameService idempotency', () => {
         findUnique: vi.fn().mockResolvedValue(null),
         create: vi.fn(),
       },
-      world: { findFirst: vi.fn().mockResolvedValue(world) },
+      world: {
+        findFirst: vi.fn().mockResolvedValue(world),
+        update: vi.fn(),
+      },
       resourceNodeCooldown: {
         findUnique: vi.fn().mockResolvedValue({
           availableAt: new Date(Date.now() + 30_000),
@@ -256,7 +259,7 @@ describe('GameService idempotency', () => {
     expect(transaction.resourceNodeCooldown.findUnique).toHaveBeenCalledWith({
       where: { worldId_nodeKey: { worldId: 'world-1', nodeKey: '2,3' } },
     });
-    expect(transaction.world.update).toBeUndefined();
+    expect(transaction.world.update).not.toHaveBeenCalled();
     expect(transaction.resourceBalance.update).not.toHaveBeenCalled();
     expect(transaction.gameAction.create).not.toHaveBeenCalled();
   });
