@@ -204,6 +204,63 @@ describe('GameService idempotency', () => {
     );
   });
 
+  it('rejects collecting a resource node while its cooldown is active', async () => {
+    const world = {
+      id: 'world-1',
+      level: 1,
+      xp: 0,
+      resources: { wood: 10, stone: 0, metal: 0, energy: 20 },
+      buildings: [],
+      pet: null,
+      foundItems: [],
+      woodCollects: 0,
+      stoneCollects: 0,
+      dailyProgressDate: null,
+      dailyCollects: 0,
+      claimedQuests: [],
+      totalBuilt: 0,
+      ruinsVisits: 0,
+      portalInteracts: 0,
+      petCareCount: 0,
+      friendVisited: false,
+      lastDailyClaimAt: null,
+    };
+    const transaction = {
+      gameAction: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        create: vi.fn(),
+      },
+      world: { findFirst: vi.fn().mockResolvedValue(world) },
+      resourceNodeCooldown: {
+        findUnique: vi.fn().mockResolvedValue({
+          availableAt: new Date(Date.now() + 30_000),
+        }),
+      },
+      resourceBalance: { update: vi.fn() },
+    };
+    const prisma = {
+      $transaction: vi.fn(
+        async (callback: (client: typeof transaction) => Promise<unknown>) =>
+          callback(transaction),
+      ),
+    } as unknown as PrismaService;
+    const service = new GameService(prisma);
+
+    await expect(
+      service.collect('player-1', {
+        requestId: '11111111-1111-4111-8111-111111111111',
+        nodeId: '2,3',
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    expect(transaction.resourceNodeCooldown.findUnique).toHaveBeenCalledWith({
+      where: { worldId_nodeKey: { worldId: 'world-1', nodeKey: '2,3' } },
+    });
+    expect(transaction.world.update).toBeUndefined();
+    expect(transaction.resourceBalance.update).not.toHaveBeenCalled();
+    expect(transaction.gameAction.create).not.toHaveBeenCalled();
+  });
+
   it('does not debit a building when the atomic balance guard fails', async () => {
     const transaction = {
       gameAction: {
