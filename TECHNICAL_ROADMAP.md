@@ -17,6 +17,7 @@
 - Figma Make-specific Vite configuration and `.figma` tooling have been removed from the working branch.
 - CI verifies frozen-lockfile installation, frontend/API builds, and unit tests.
 - Idempotent game actions reject request IDs reused for a different action type; regression tests were added.
+- Collection exploration now debits energy with a conditional database update (`energy >= 10`) so concurrent requests cannot overspend based only on a stale snapshot.
 - Production readiness, database migrations and real deployment still require validation in the hosting environment.
 
 ## Правила разработки
@@ -60,9 +61,10 @@
 18. [ ] Deploy the frontend and API with real HTTPS origins and PostgreSQL; verify Telegram login end-to-end.
 19. [ ] Verify long-running session behavior when Telegram initData approaches its 24-hour freshness limit.
 20. [ ] Review remaining frontend/server synchronization behavior.
+21. [x] Make collection energy debit atomic and add a regression test for a failed balance guard.
 
 ## Next priorities
-- Verify server authorization, input validation, idempotency and transaction behavior.
+- Continue reviewing server authorization, input validation, idempotency and transaction behavior; the collection energy debit now has an atomic balance guard.
 - Check Prisma schema/migrations and readiness behavior against a real PostgreSQL instance.
 - Complete an end-to-end Telegram launch after the owner configures hosting secrets and bot URL.
 - Split oversized UI/gameplay modules where it improves maintainability; do not perform blind mechanical refactors.
