@@ -16,7 +16,8 @@
 - `TECHNICAL_ROADMAP.md`: current status, rules, and next steps.
 
 ## Development rules
-- Never commit directly to `main`; work on a dedicated branch and open a pull request.
+- Never commit directly to `main`; work only on a dedicated branch.
+- Do not create a pull request unless the user explicitly asks.
 - Preserve existing gameplay behavior unless a change is explicitly planned.
 - Keep components, services, and rules focused; extract reusable logic rather than duplicating it.
 - Keep every source file under 1500 lines.
