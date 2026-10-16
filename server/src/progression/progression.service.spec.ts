@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 import { PrismaService } from '../database/prisma.service.js';
 import { ProgressionService } from './progression.service.js';
@@ -59,6 +60,53 @@ describe('ProgressionService idempotency', () => {
     );
     expect(operation).not.toHaveBeenCalled();
   });
+  it('retries a progression action after a serializable transaction conflict', async () => {
+    const serializationError = new Prisma.PrismaClientKnownRequestError(
+      'Serialization failure',
+      { code: 'P2034', clientVersion: 'test' },
+    );
+    const transaction = {
+      gameAction: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockResolvedValue(undefined),
+      },
+    };
+    const prisma = {
+      $transaction: vi
+        .fn()
+        .mockRejectedValueOnce(serializationError)
+        .mockImplementationOnce(
+          async (callback: (client: typeof transaction) => Promise<unknown>) =>
+            callback(transaction),
+        ),
+    } as unknown as PrismaService;
+    const service = new ProgressionService(prisma, {} as GameService);
+    const operation = vi.fn().mockResolvedValue(undefined);
+
+    await expect(run(service, 'collection', operation)).resolves.toBeUndefined();
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(2);
+    expect(prisma.$transaction).toHaveBeenNthCalledWith(
+      1,
+      expect.any(Function),
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+    expect(prisma.$transaction).toHaveBeenNthCalledWith(
+      2,
+      expect.any(Function),
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+    expect(operation).toHaveBeenCalledTimes(1);
+    expect(transaction.gameAction.create).toHaveBeenCalledWith({
+      data: {
+        playerId: 'player-1',
+        key: 'request-1',
+        kind: 'collection',
+        response: { ok: true },
+      },
+    });
+  });
+
   it('rejects feeding a pet that is already sufficiently full', async () => {
     const transaction = {
       gameAction: {
