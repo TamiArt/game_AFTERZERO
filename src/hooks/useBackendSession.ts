@@ -94,11 +94,11 @@ export function useBackendSession(
     let disposed = false;
     let refreshController: AbortController | null = null;
 
-    const refresh = () => {
+    const refresh = (force = false) => {
       if (
         document.visibilityState !== 'visible' ||
         refreshInFlight.current ||
-        Date.now() - lastRefreshAt.current < SESSION_REFRESH_INTERVAL_MS
+        (!force && Date.now() - lastRefreshAt.current < SESSION_REFRESH_INTERVAL_MS)
       ) {
         return;
       }
@@ -147,13 +147,16 @@ export function useBackendSession(
         });
     };
 
+    const handleOnline = () => refresh(true);
     const interval = window.setInterval(refresh, 60_000);
     document.addEventListener('visibilitychange', refresh);
+    window.addEventListener('online', handleOnline);
     return () => {
       disposed = true;
       refreshController?.abort();
       window.clearInterval(interval);
       document.removeEventListener('visibilitychange', refresh);
+      window.removeEventListener('online', handleOnline);
     };
   }, [initData, state.status]);
 
