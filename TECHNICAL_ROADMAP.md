@@ -181,7 +181,7 @@ These are differences between the current implementation and the design target, 
 - [x] Notify the session controller when gameplay or progression API requests receive HTTP 401; a missing token on a configured backend also expires the local session.
 - [x] Prevent a cancelled Telegram-auth request from writing its access token after the owning effect has been aborted.
 - [x] On successful periodic/foreground session refresh, fetch and apply a fresh authoritative game snapshot; abort stale refresh work when the owning effect is cleaned up.
-- [x] Trigger a throttling-bypassed session/snapshot refresh when browser connectivity returns, while retaining the in-flight guard and visibility check.
+- [x] Trigger a throttling-bypassed session/snapshot refresh when browser connectivity returns or the app returns to the foreground, while retaining the in-flight guard and visibility check.
 - [x] Add unit tests for session-expiry notification ordering and ensure a failed token cleanup does not emit a misleading event.
 - [x] Test refresh pipeline ordering, server snapshot application, and suppression of updates after cancellation/stale effect cleanup.
 - [ ] Add mounted-hook/API integration tests and verify session behavior across real Telegram background/foreground transitions.
