@@ -177,7 +177,8 @@ These are differences between the current implementation and the design target, 
    - [ ] Verify API error messages are mapped to understandable UI feedback; ensure failed requests do not leave stale optimistic state.
 2. **Client/server synchronization and persistence.**
    - [x] Trace gameplay mutations from screen/hook through API and server response into the client store; serialize mutation requests and snapshot application to prevent older responses overwriting newer state.
-   - [x] Add focused tests for ordered snapshot application and queue recovery after a failed request. [ ] Continue with refresh/reconnect, expired-session recovery and cross-tab/session changes.
+   - [x] Add focused tests for ordered snapshot application and queue recovery after a failed request.
+- [ ] Cover refresh/reconnect, expired-session recovery and cross-tab/session changes.
    - [ ] Verify demo mode remains separate and never overrides an enabled backend session.
 3. **First complete gameplay vertical slice.**
    - [ ] Reconcile the starter tutorial with the documented new-player path: enter world, gather resources, build the first house, gain XP, see the next unlock.
