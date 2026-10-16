@@ -57,6 +57,50 @@ describe('GameService idempotency', () => {
     );
   });
 
+  it('replays the winning response when concurrent requests race on the same key', async () => {
+    const snapshot = { world: { id: 'world-1', level: 2 } };
+    const uniqueConflict = new Prisma.PrismaClientKnownRequestError(
+      'Unique constraint failed',
+      {
+        code: 'P2002',
+        clientVersion: 'test',
+        meta: { target: ['playerId', 'key'] },
+      },
+    );
+    const transaction = {
+      gameAction: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockRejectedValue(uniqueConflict),
+      },
+    };
+    const winningAction = { kind: 'build', response: snapshot };
+    const prisma = {
+      $transaction: vi.fn(
+        async (callback: (client: typeof transaction) => Promise<unknown>) =>
+          callback(transaction),
+      ),
+      gameAction: {
+        findUnique: vi.fn().mockResolvedValue(winningAction),
+      },
+    } as unknown as PrismaService;
+    const service = new GameService(prisma);
+    const operation = vi.fn().mockResolvedValue(snapshot);
+
+    await expect(
+      (service as unknown as IdempotentRunner).idempotent(
+        'player-1',
+        'request-1',
+        'build',
+        operation,
+      ),
+    ).resolves.toEqual(snapshot);
+
+    expect(operation).toHaveBeenCalledTimes(1);
+    expect(prisma.gameAction.findUnique).toHaveBeenCalledWith({
+      where: { playerId_key: { playerId: 'player-1', key: 'request-1' } },
+    });
+  });
+
   it('retries world-state reads after a serializable transaction conflict', async () => {
     const serializationError = new Prisma.PrismaClientKnownRequestError(
       'Serialization failure',
