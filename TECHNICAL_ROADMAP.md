@@ -203,5 +203,5 @@ These are differences between the current implementation and the design target, 
    - [ ] Mark MVP ready only when the end-to-end acceptance path in the design document has actually been exercised.
 
 ### Current execution focus
-The active branch remains `fix/server-state-concurrency`. The next code changes should complete server mutation/concurrency tests first, then trace synchronization end-to-end. Product discrepancies above remain explicit backlog items until their rules are defined and tested; do not silently alter progression or resource balance during a concurrency fix.
+The active branch remains `fix/server-state-concurrency`. A regression test now verifies that an active resource-node cooldown rejects collection without changing world resources or recording a successful action. The next code changes should complete server mutation/concurrency tests first, then trace synchronization end-to-end. Product discrepancies above remain explicit backlog items until their rules are defined and tested; do not silently alter progression or resource balance during a concurrency fix.
 
