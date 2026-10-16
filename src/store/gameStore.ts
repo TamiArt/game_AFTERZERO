@@ -297,6 +297,11 @@ export const useGameStore = create<GameState>()(
       },
 
       finishBuilding: (id) => {
+        // The timer watcher can observe the same completed building more than once.
+        // Only the first transition from "building" to "finished" may grant rewards.
+        const building = get().buildings.find((item) => item.id === id);
+        if (!building || building.endsAt === null) return;
+
         set((s) => ({
           buildings: s.buildings.map((b) => b.id === id ? { ...b, endsAt: null } : b),
           totalBuilt: s.totalBuilt + 1,

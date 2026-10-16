@@ -412,15 +412,21 @@ function BuildPanel({ tileC, tileR, level, onClose, onBuild }: {
 function BuildingTimerWatcher() {
   const buildings = useGameStore((s) => s.buildings);
   const { complete } = useAuthoritativeGame();
+  const hasActiveBuildings = buildings.some((building) => building.endsAt !== null);
 
   useEffect(() => {
+    // Keep the completion poller idle until there is actually a building
+    // countdown to watch. The visible countdown has its own clock.
+    if (!hasActiveBuildings) return;
+
     const id = setInterval(() => {
-      buildings.forEach((b) => {
-        if (b.endsAt !== null && Date.now() >= b.endsAt) complete(b);
+      const now = Date.now();
+      buildings.forEach((building) => {
+        if (building.endsAt !== null && now >= building.endsAt) complete(building);
       });
     }, 1000);
     return () => clearInterval(id);
-  }, [buildings, complete]);
+  }, [buildings, complete, hasActiveBuildings]);
 
   return null;
 }
@@ -505,7 +511,6 @@ export function WorldScreen() {
     interact,
   } =
     useAuthoritativeGame();
-  const advanceQuest  = useGameStore((s) => s?.advanceQuest ?? (() => {}));
   const addToast      = useGameStore((s) => s?.addToast ?? (() => {}));
 
   const [buildMode, setBuildMode]   = useState(false);
@@ -524,9 +529,8 @@ export function WorldScreen() {
 
   const handleTreeClick = useCallback((tileKey: string, resource: ResourceKey, svgX: number, svgY: number) => {
     collectTile(tileKey, resource, Math.floor(Math.random() * 12) + 10, svgX, svgY - 50);
-    advanceQuest('q_collect', 1);
     setPanel(null);
-  }, [collectTile, advanceQuest]);
+  }, [collectTile]);
 
   const handleStoneClick = useCallback((tileKey: string, svgX: number, svgY: number) => {
     collectTile(tileKey, 'stone', Math.floor(Math.random() * 8) + 5, svgX, svgY - 40);

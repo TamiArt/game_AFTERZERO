@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   authenticateTelegram,
   type BackendSession,
@@ -20,6 +20,9 @@ interface BackendSessionState {
   status: SessionStatus;
 }
 
+const SESSION_REFRESH_INTERVAL_MS = 8 * 60 * 1000;
+const ACCESS_TOKEN_KEY = 'afterzero.accessToken';
+
 export function useBackendSession(
   initData: string,
   telegramReady: boolean,
@@ -29,6 +32,8 @@ export function useBackendSession(
     session: null,
     status: isBackendConfigured() ? 'idle' : 'disabled',
   });
+  const lastRefreshAt = useRef(0);
+  const refreshInFlight = useRef(false);
 
   useEffect(() => {
     if (!isBackendConfigured() || !telegramReady || !initData) return;
@@ -40,11 +45,13 @@ export function useBackendSession(
       .then(async (session) => {
         const snapshot = await getGameState();
         if (controller.signal.aborted) return;
+        lastRefreshAt.current = Date.now();
         useGameStore.getState().syncServerState(snapshot);
         setState({ error: null, session, status: 'authenticated' });
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
+        sessionStorage.removeItem(ACCESS_TOKEN_KEY);
         setState({
           error:
             error instanceof Error
@@ -57,6 +64,49 @@ export function useBackendSession(
 
     return () => controller.abort();
   }, [initData, telegramReady]);
+
+  useEffect(() => {
+    if (state.status !== 'authenticated' || !initData) return;
+
+    const refresh = () => {
+      if (
+        document.visibilityState !== 'visible' ||
+        refreshInFlight.current ||
+        Date.now() - lastRefreshAt.current < SESSION_REFRESH_INTERVAL_MS
+      ) {
+        return;
+      }
+
+      refreshInFlight.current = true;
+      lastRefreshAt.current = Date.now();
+      void authenticateTelegram(initData)
+        .catch((error: unknown) => {
+          lastRefreshAt.current =
+            Date.now() - SESSION_REFRESH_INTERVAL_MS + 60_000;
+          if (
+            error instanceof Error &&
+            error.message === 'Telegram authentication was rejected'
+          ) {
+            sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+            setState({
+              error: error.message,
+              session: null,
+              status: 'error',
+            });
+          }
+        })
+        .finally(() => {
+          refreshInFlight.current = false;
+        });
+    };
+
+    const interval = window.setInterval(refresh, 60_000);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [initData, state.status]);
 
   return state;
 }

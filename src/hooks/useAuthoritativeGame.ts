@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import {
   claimServerDaily,
   claimServerProduction,
@@ -53,6 +53,7 @@ function requireSession(): boolean {
 }
 
 export function useAuthoritativeGame() {
+  const pendingBuildingIds = useRef(new Set<string>());
   const collect = useCallback(
     (
       tileKey: string,
@@ -112,15 +113,23 @@ export function useAuthoritativeGame() {
     [],
   );
 
-  const complete = useCallback((building: PlacedBuilding) => {
+  const complete = useCallback(async (building: PlacedBuilding) => {
     if (!isGameBackendConfigured()) {
       useGameStore.getState().finishBuilding(building.id);
       return;
     }
-    if (!requireSession()) return;
-    void completeServerBuilding(building.id)
-      .then(applySnapshot)
-      .catch(reportError);
+    if (!requireSession() || pendingBuildingIds.current.has(building.id)) return;
+
+    // The one-second watcher must not issue concurrent completion requests while
+    // the server is processing the first request.
+    pendingBuildingIds.current.add(building.id);
+    try {
+      applySnapshot(await completeServerBuilding(building.id));
+    } catch (error) {
+      reportError(error);
+    } finally {
+      pendingBuildingIds.current.delete(building.id);
+    }
   }, []);
 
   const claimDaily = useCallback(() => {

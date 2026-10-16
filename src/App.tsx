@@ -4,6 +4,7 @@ import { BottomNav } from './components/BottomNav';
 import { OnboardingScreen } from './components/OnboardingScreen';
 import { LevelUpModal } from './components/LevelUpModal';
 import { Toast } from './components/Toast';
+import { TelegramConnectionScreen } from './components/TelegramConnectionScreen';
 import { useTelegram } from './hooks/useTelegram';
 import { useBackendSession } from './hooks/useBackendSession';
 import { useAuthoritativeGame } from './hooks/useAuthoritativeGame';
@@ -61,13 +62,13 @@ export type Tab = 'world' | 'explore' | 'collection' | 'pet' | 'social' | 'shop'
 export default function App() {
   const [tab, setTab] = useState<Tab>('world');
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const { user, initData, isReady } = useTelegram();
-  useBackendSession(initData, isReady);
+  const { user, initData, isReady, isInTelegram } = useTelegram();
+  const backendSession = useBackendSession(initData, isReady);
 
-  const onboardingDone   = useGameStore((s) => s?.onboardingDone ?? false);
-  const levelUpPending   = useGameStore((s) => s?.levelUpPending ?? null);
-  const setPlayerName    = useGameStore((s) => s?.setPlayerName ?? (() => {}));
-  const addToast         = useGameStore((s) => s?.addToast ?? (() => {}));
+  const onboardingDone = useGameStore((s) => s?.onboardingDone ?? false);
+  const levelUpPending = useGameStore((s) => s?.levelUpPending ?? null);
+  const setPlayerName = useGameStore((s) => s?.setPlayerName ?? (() => {}));
+  const addToast = useGameStore((s) => s?.addToast ?? (() => {}));
   const { claimProduction } = useAuthoritativeGame();
   const reducedMotion = useSettingsStore((s) => s.reducedMotion);
   const highContrast = useSettingsStore((s) => s.highContrast);
@@ -84,14 +85,12 @@ export default function App() {
     root.dataset.graphics = graphicsQuality;
   }, [graphicsQuality, highContrast, language, readableText, reducedMotion]);
 
-  // Применяем имя из Telegram при первом входе
   useEffect(() => {
     if (isReady && user?.first_name) {
       setPlayerName(user.first_name);
     }
   }, [isReady, user, setPlayerName]);
 
-  // Приветствие при возвращении
   useEffect(() => {
     if (isReady && onboardingDone) {
       const timer = setTimeout(() => {
@@ -101,13 +100,31 @@ export default function App() {
     }
   }, [isReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Пассивная добыча от построек каждые 30 секунд
   useEffect(() => {
+    if (
+      backendSession.status !== 'authenticated' &&
+      backendSession.status !== 'disabled'
+    ) {
+      return;
+    }
+
     const id = setInterval(() => {
       claimProduction();
     }, 30_000);
     return () => clearInterval(id);
-  }, [claimProduction]);
+  }, [backendSession.status, claimProduction]);
+
+  if (
+    backendSession.status !== 'disabled' &&
+    backendSession.status !== 'authenticated'
+  ) {
+    return (
+      <TelegramConnectionScreen
+        isInTelegram={isInTelegram}
+        status={backendSession.status}
+      />
+    );
+  }
 
   return (
     <div className="app-shell">
@@ -131,18 +148,16 @@ export default function App() {
           </Suspense>
         ) : (
           <Suspense fallback={<ScreenLoading />}>
-            {tab === 'world'      && <WorldScreen />}
-            {tab === 'explore'    && <ExploreScreen />}
+            {tab === 'world' && <WorldScreen />}
+            {tab === 'explore' && <ExploreScreen />}
             {tab === 'collection' && <CollectionScreen />}
-            {tab === 'pet'        && <PetScreen />}
-            {tab === 'social'     && <SocialScreen />}
-            {tab === 'shop'       && <ShopScreen />}
+            {tab === 'pet' && <PetScreen />}
+            {tab === 'social' && <SocialScreen />}
+            {tab === 'shop' && <ShopScreen />}
           </Suspense>
         )}
 
         {!settingsOpen && !onboardingDone && <OnboardingScreen />}
-
-        {/* Модаль повышения уровня */}
         {!settingsOpen && levelUpPending && <LevelUpModal />}
       </main>
 
