@@ -9,11 +9,14 @@
 - Gameplay API: resources, building, daily rewards, quests, collection, pet progression.
 - Frontend supports demo mode when `VITE_API_URL` is not configured.
 - Existing unit tests cover authentication validation and gameplay/progression rules.
-- Figma Make-specific config and tooling are still present in the baseline; cleanup is in progress.
+- Figma Make-specific Vite configuration and `.figma` tooling have been removed from the working branch.
+- CI verifies frozen-lockfile installation, frontend/API builds, and unit tests.
+- Idempotent game actions reject request IDs reused for a different action type; regression tests were added.
 - Production readiness, full test suite, database migrations and deployment configuration must be verified in CI/environment before claiming release readiness.
 
 ## Правила разработки
-- Never commit directly to `main`; work on a dedicated feature/fix branch and use a PR.
+- Never commit directly to `main`; work only on a dedicated feature/fix branch.
+- Do not create a pull request unless the user explicitly asks.
 - Keep modules focused and reuse shared components/rules instead of duplicating logic.
 - Keep every source file below 1500 lines; split earlier when readability or responsibility warrants it.
 - Resolve file conflicts in favor of the newer intended version; do not keep duplicate legacy copies.
@@ -22,14 +25,21 @@
 - Remove Figma Make scaffolding only after replacing any runtime/build behavior it provides.
 - Update this roadmap when work status or priorities change.
 
-## Current iteration: remove platform scaffolding safely
+## Completed baseline cleanup
 1. [x] Create isolated branch `chore/afterzero-audit-roadmap`.
 2. [x] Add this roadmap based on repository inspection.
-3. [ ] Replace Figma-specific Vite plugins with standard Vite configuration.
-4. [ ] Remove Figma Make references from HTML, package metadata, and developer instructions.
-5. [ ] Remove obsolete `.figma` support files after confirming no runtime imports remain.
-6. [ ] Verify frontend build, API TypeScript build, and unit tests in a Node/pnpm environment.
-7. [ ] Review large components and extract focused modules in separate, behavior-preserving changes.
+3. [x] Replace Figma-specific Vite plugins with standard Vite configuration.
+4. [x] Remove obsolete Figma Make references from HTML, package metadata, and developer instructions.
+5. [x] Remove obsolete `.figma` support files after confirming no runtime imports remain.
+6. [x] Add CI for frozen-lockfile installation, frontend/API builds, and tests.
+7. [x] Verify CI completed successfully for the baseline cleanup.
+
+## Current iteration: correctness and maintainability
+1. [x] Reject reuse of an idempotency key for a different game action.
+2. [x] Add regression tests for same-action replay and cross-action key reuse.
+3. [ ] Verify the latest CI run passes with the regression tests.
+4. [ ] Review transaction boundaries and concurrent resource/building updates.
+5. [ ] Audit frontend state synchronization and split large screens only where safe.
 
 ## Next priorities
 - Verify server authorization, input validation, idempotency and transaction behavior.
@@ -43,4 +53,4 @@
 - Frontend and API builds pass; tests pass or any environment-dependent blockers are documented.
 - Existing demo mode and current gameplay flows remain intact.
 - No source file exceeds 1500 lines.
-- Changes are committed only to this branch and reviewed through a pull request.
+- Changes are committed only to the dedicated working branch; do not create a PR unless requested.
