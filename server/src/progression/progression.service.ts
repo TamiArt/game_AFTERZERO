@@ -168,6 +168,15 @@ export class ProgressionService {
 
       const now = new Date();
       const pet = degradedPet(world.pet, now);
+      // Enforce the same useful-action thresholds on the server as the UI.
+      // Client-side disabled buttons are not a security or progression guard.
+      if (input.action === 'feed' && pet.hunger >= 95) {
+        throw new ConflictException('Pet does not need feeding yet');
+      }
+      if (input.action === 'rest' && pet.health >= 95) {
+        throw new ConflictException('Pet does not need rest yet');
+      }
+
       let hunger = pet.hunger;
       let mood = pet.mood;
       let health = pet.health;
