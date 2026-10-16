@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 import { PrismaService } from '../database/prisma.service.js';
 import { GameService } from './game.service.js';
@@ -53,6 +54,36 @@ describe('GameService idempotency', () => {
 
     await expect(runIdempotent(service, 'build')).rejects.toBeInstanceOf(
       ConflictException,
+    );
+  });
+
+  it('retries world-state reads after a serializable transaction conflict', async () => {
+    const serializationError = new Prisma.PrismaClientKnownRequestError(
+      'Serialization failure',
+      { code: 'P2034', clientVersion: 'test' },
+    );
+    const finalError = new Error('second transaction failed');
+    const transaction = vi
+      .fn()
+      .mockRejectedValueOnce(serializationError)
+      .mockRejectedValueOnce(finalError);
+    const prisma = {
+      $transaction: transaction,
+    } as unknown as PrismaService;
+    const service = new GameService(prisma);
+
+    await expect(service.getState('player-1')).rejects.toBe(finalError);
+
+    expect(transaction).toHaveBeenCalledTimes(2);
+    expect(transaction).toHaveBeenNthCalledWith(
+      1,
+      expect.any(Function),
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+    expect(transaction).toHaveBeenNthCalledWith(
+      2,
+      expect.any(Function),
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
   });
 
