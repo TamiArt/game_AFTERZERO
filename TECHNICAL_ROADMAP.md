@@ -41,7 +41,9 @@
 4. [x] Make building resource debits conditional and atomic; reject the transaction if the current balance is insufficient.
 5. [x] Add a regression test for a failed atomic balance guard.
 6. [ ] Review remaining transaction boundaries and concurrent resource/cooldown updates.
-7. [ ] Audit frontend state synchronization and split large screens only where safe.
+7. [x] Remove duplicate wood-collection quest progress update in the world screen; the store already owns this local-mode update and server mode syncs authoritative progress.
+8. [x] Add store tests for one-time collect quest increments in local/demo mode.
+9. [ ] Audit frontend state synchronization and split large screens only where safe.
 
 ## Next priorities
 - Verify server authorization, input validation, idempotency and transaction behavior.
