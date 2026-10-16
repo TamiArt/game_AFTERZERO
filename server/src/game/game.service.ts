@@ -70,7 +70,11 @@ export class GameService {
     playerId: string,
     input: CollectResourceDto,
   ): Promise<GameSnapshot> {
-    return this.idempotent(playerId, input.requestId, 'collect', async (tx) => {
+    return this.idempotent(
+      playerId,
+      input.requestId,
+      `collect:${input.nodeId}`,
+      async (tx) => {
       const now = new Date();
       const world = await this.requireWorld(tx, playerId);
       const rule = RESOURCE_NODE_RULES[input.nodeId];
@@ -139,7 +143,11 @@ export class GameService {
     playerId: string,
     input: StartBuildingDto,
   ): Promise<GameSnapshot> {
-    return this.idempotent(playerId, input.requestId, 'build', async (tx) => {
+    return this.idempotent(
+      playerId,
+      input.requestId,
+      `build:${input.type}:${input.tileC}:${input.tileR}`,
+      async (tx) => {
       const world = await this.requireWorld(tx, playerId);
       const rule = BUILDING_RULES[input.type];
       if (!rule || world.level < rule.minimumLevel) {
@@ -204,7 +212,7 @@ export class GameService {
     return this.idempotent(
       playerId,
       requestId,
-      'complete-building',
+      `complete-building:${buildingId}`,
       async (tx) => {
         const world = await this.requireWorld(tx, playerId);
         const building = await tx.building.findFirst({
