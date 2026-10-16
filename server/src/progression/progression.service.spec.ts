@@ -213,6 +213,70 @@ describe('ProgressionService idempotency', () => {
     expect(transaction.gameAction.create).not.toHaveBeenCalled();
   });
 
+  it('does not grant a quest reward when another claim wins during retry', async () => {
+    const serializationError = new Prisma.PrismaClientKnownRequestError(
+      'Serialization failure',
+      { code: 'P2034', clientVersion: 'test' },
+    );
+    const world = {
+      id: 'world-1',
+      level: 1,
+      xp: 0,
+      resources: { wood: 10, stone: 0, metal: 0, energy: 10 },
+      claimedQuests: [] as string[],
+      foundItems: [],
+      woodCollects: 3,
+      stoneCollects: 0,
+      dailyCollects: 0,
+      ruinsVisits: 0,
+      portalInteracts: 0,
+      totalBuilt: 0,
+      petCareCount: 0,
+      friendVisited: false,
+      pet: null,
+    };
+    const transactionClient = {
+      gameAction: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        create: vi.fn(),
+      },
+      world: {
+        findFirst: vi.fn().mockImplementation(async () => world),
+        update: vi.fn(),
+      },
+      resourceBalance: { update: vi.fn() },
+    };
+    const transaction = vi
+      .fn()
+      .mockImplementationOnce(async () => {
+        // Another request has claimed the quest while this serializable
+        // transaction is aborted and prepared for retry.
+        world.claimedQuests = ['q_collect'];
+        throw serializationError;
+      })
+      .mockImplementationOnce(
+        async (callback: (client: typeof transactionClient) => Promise<unknown>) =>
+          callback(transactionClient),
+      );
+    const prisma = {
+      $transaction: transaction,
+      gameAction: { findUnique: vi.fn().mockResolvedValue(null) },
+    } as unknown as PrismaService;
+    const service = new ProgressionService(prisma, {} as GameService);
+
+    await expect(
+      service.claimQuest('player-1', {
+        requestId: 'quest-race-retry',
+        questId: 'q_collect',
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    expect(transaction).toHaveBeenCalledTimes(2);
+    expect(transactionClient.world.update).not.toHaveBeenCalled();
+    expect(transactionClient.resourceBalance.update).not.toHaveBeenCalled();
+    expect(transactionClient.gameAction.create).not.toHaveBeenCalled();
+  });
+
   it('does not discover an item when the atomic energy guard fails', async () => {
     const transaction = {
       gameAction: {
