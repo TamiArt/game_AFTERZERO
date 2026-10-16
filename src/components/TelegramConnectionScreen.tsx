@@ -1,9 +1,6 @@
-import type { ReactNode } from 'react';
-
 interface TelegramConnectionScreenProps {
   status: 'idle' | 'loading' | 'error';
   isInTelegram: boolean;
-  children?: ReactNode;
 }
 
 export function TelegramConnectionScreen({
