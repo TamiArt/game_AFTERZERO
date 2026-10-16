@@ -53,6 +53,7 @@
 8. [x] Add a regression test proving progression mutations retry after a PostgreSQL serializable transaction conflict and execute the action only once after the retry.
 9. [x] Cover Telegram initData timestamp boundaries: malformed timestamps and timestamps more than 60 seconds in the future are rejected.
 8. [x] Add a regression test for concurrent game-action requests racing on the unique idempotency key; verify the loser replays the winning response without rerunning the action.
+9. [x] Verify a concurrent request cannot reuse the same idempotency key for a different action type.
 8. [ ] Review remaining transaction boundaries and concurrent resource/cooldown updates.
 - [x] Guard demo-mode building completion against duplicate rewards and quest progress.
 - [x] Deduplicate in-flight server completion requests and release the guard after failure so retries remain possible.
