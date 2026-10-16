@@ -1,4 +1,4 @@
-import { ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { PrismaService } from '../database/prisma.service.js';
 import { GameService } from './game.service.js';
@@ -55,4 +55,54 @@ describe('GameService idempotency', () => {
       ConflictException,
     );
   });
+
+  it('does not debit a building when the atomic balance guard fails', async () => {
+    const transaction = {
+      gameAction: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        create: vi.fn(),
+      },
+      world: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: 'world-1',
+          level: 1,
+          xp: 0,
+          resources: { wood: 40, stone: 0, metal: 0, energy: 50 },
+          buildings: [],
+          pet: null,
+          foundItems: ['i8'],
+        }),
+      },
+      building: {
+        create: vi.fn().mockResolvedValue({ id: 'building-1' }),
+      },
+      resourceBalance: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+      },
+    };
+    const prisma = {
+      $transaction: vi.fn(
+        async (callback: (client: typeof transaction) => Promise<unknown>) =>
+          callback(transaction),
+      ),
+    } as unknown as PrismaService;
+    const service = new GameService(prisma);
+
+    await expect(
+      service.startBuilding('player-1', {
+        requestId: '11111111-1111-4111-8111-111111111111',
+        type: 'garden',
+        tileC: 2,
+        tileR: 3,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(transaction.resourceBalance.updateMany).toHaveBeenCalledWith({
+      where: { worldId: 'world-1', wood: { gte: 30 } },
+      data: { wood: { decrement: 30 } },
+    });
+    expect(transaction.world.findFirst).toHaveBeenCalledTimes(1);
+    expect(transaction.gameAction.create).not.toHaveBeenCalled();
+  });
+
 });
