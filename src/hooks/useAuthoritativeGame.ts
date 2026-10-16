@@ -52,7 +52,8 @@ function requireSession(): boolean {
   return false;
 }
 
-export function useAuthoritativeGame() {\n  const pendingBuildingIds = useRef(new Set<string>());
+export function useAuthoritativeGame() {
+  const pendingBuildingIds = useRef(new Set<string>());
   const collect = useCallback(
     (
       tileKey: string,
