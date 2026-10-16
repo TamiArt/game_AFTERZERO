@@ -43,7 +43,9 @@
 6. [ ] Review remaining transaction boundaries and concurrent resource/cooldown updates.
 7. [x] Remove duplicate wood-collection quest progress update in the world screen; the store already owns this local-mode update and server mode syncs authoritative progress.
 8. [x] Add store tests for one-time collect quest increments in local/demo mode.
-9. [ ] Audit frontend state synchronization and split large screens only where safe.
+9. [x] Apply the same cross-action idempotency-key guard to progression actions, including unique-key race recovery.
+10. [x] Add progression idempotency regression tests.
+11. [ ] Audit frontend state synchronization and split large screens only where safe.
 
 ## Next priorities
 - Verify server authorization, input validation, idempotency and transaction behavior.
