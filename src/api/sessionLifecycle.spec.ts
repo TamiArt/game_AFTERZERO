@@ -44,7 +44,8 @@ describe('refreshAuthoritativeSession', () => {
         calls.push('authenticate');
         return { accessToken: 'fresh-token' };
       },
-      getSnapshot: async () => {
+      getSnapshot: async (signal) => {
+        expect(signal).toBe(controller.signal);
         calls.push('get-snapshot');
         return { world: 'server-world' };
       },
@@ -69,7 +70,8 @@ describe('refreshAuthoritativeSession', () => {
 
     await refreshAuthoritativeSession({
       authenticate: async () => ({ accessToken: 'fresh-token' }),
-      getSnapshot: async () => {
+      getSnapshot: async (signal) => {
+        expect(signal).toBe(controller.signal);
         controller.abort();
         return { world: 'stale-world' };
       },
