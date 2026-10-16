@@ -66,7 +66,8 @@
 22. [x] Validate the web app origin and PostgreSQL connection URL at startup; require HTTPS for production origins and cover validation with tests.
 
 ## Next priorities
-- Continue reviewing server authorization, input validation, idempotency and transaction behavior; collection energy and production URL configuration now have explicit guards.\n- Audit timer-driven actions and reward paths for duplicate execution; building completion now has client-side in-flight deduplication and a demo-store idempotency guard.
+- Continue reviewing server authorization, input validation, idempotency and transaction behavior; collection energy and production URL configuration now have explicit guards.
+- Audit timer-driven actions and reward paths for duplicate execution; building completion now has client-side in-flight deduplication and a demo-store idempotency guard.
 - Check Prisma schema/migrations and readiness behavior against a real PostgreSQL instance.
 - Complete an end-to-end Telegram launch after the owner configures hosting secrets and bot URL.
 - Split oversized UI/gameplay modules where it improves maintainability; do not perform blind mechanical refactors.
