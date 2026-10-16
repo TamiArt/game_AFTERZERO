@@ -90,6 +90,9 @@ export function useBackendSession(
   useEffect(() => {
     if (state.status !== 'authenticated' || !initData) return;
 
+    let disposed = false;
+    let refreshController: AbortController | null = null;
+
     const refresh = () => {
       if (
         document.visibilityState !== 'visible' ||
@@ -101,8 +104,25 @@ export function useBackendSession(
 
       refreshInFlight.current = true;
       lastRefreshAt.current = Date.now();
-      void authenticateTelegram(initData)
+      refreshController = new AbortController();
+      const signal = refreshController.signal;
+
+      void authenticateTelegram(initData, signal)
+        .then(async (session) => {
+          const snapshot = await getGameState();
+          if (disposed || signal.aborted) return;
+          useGameStore.getState().syncServerState(snapshot);
+          setState({ error: null, session, status: 'authenticated' });
+        })
         .catch((error: unknown) => {
+          if (
+            disposed ||
+            signal.aborted ||
+            (error instanceof DOMException && error.name === 'AbortError')
+          ) {
+            return;
+          }
+
           lastRefreshAt.current =
             Date.now() - SESSION_REFRESH_INTERVAL_MS + 60_000;
           if (
@@ -119,12 +139,15 @@ export function useBackendSession(
         })
         .finally(() => {
           refreshInFlight.current = false;
+          refreshController = null;
         });
     };
 
     const interval = window.setInterval(refresh, 60_000);
     document.addEventListener('visibilitychange', refresh);
     return () => {
+      disposed = true;
+      refreshController?.abort();
       window.clearInterval(interval);
       document.removeEventListener('visibilitychange', refresh);
     };
