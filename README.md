@@ -20,6 +20,18 @@ pnpm dev
 
 Open the Vite URL shown in the terminal (default `http://localhost:8443`). If `VITE_API_URL` is not set, the frontend uses its demo/local game mode; no Telegram bot token or database is needed for that mode.
 
+## Connect Telegram Mini App
+
+The frontend loads the official Telegram Web Apps SDK and initializes the Telegram viewport, theme and safe areas. When `VITE_API_URL` is configured, gameplay is gated until Telegram authentication and the initial server snapshot succeed; failed authentication does not silently fall back to demo mode.
+
+Follow [the Telegram Mini App setup guide](docs/TELEGRAM_MINI_APP_SETUP.md) to deploy the frontend and API, configure the PostgreSQL database, set required environment variables, and add the HTTPS frontend URL to `@BotFather`.
+
+A real launch requires:
+- An HTTPS frontend URL reachable by Telegram clients.
+- A publicly reachable HTTPS API and a PostgreSQL database.
+- `VITE_API_URL` configured for the frontend build.
+- `WEB_APP_ORIGIN`, `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`, and a strong `JWT_SECRET` configured only on the API host.
+
 ## Run the API locally
 
 1. Start a local PostgreSQL instance and create a database/user matching your connection string.
@@ -59,6 +71,7 @@ Health endpoints:
 - `server/src/game/` — authoritative resource and building rules.
 - `server/src/progression/` — quests, collection, and pet progression.
 - `prisma/` — database schema and migrations.
+- `docs/TELEGRAM_MINI_APP_SETUP.md` — step-by-step deployment and BotFather setup.
 - `TECHNICAL_ROADMAP.md` — current engineering status and next steps.
 
 ## Security notes
