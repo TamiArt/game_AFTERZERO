@@ -81,6 +81,8 @@ export function useBackendSession(
       lastRefreshAt.current = Date.now();
       void authenticateTelegram(initData)
         .catch((error: unknown) => {
+          lastRefreshAt.current =
+            Date.now() - SESSION_REFRESH_INTERVAL_MS + 60_000;
           if (
             error instanceof Error &&
             error.message === 'Telegram authentication was rejected'
