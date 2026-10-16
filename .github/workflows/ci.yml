@@ -2,9 +2,6 @@ name: CI
 
 on:
   push:
-    branches:
-      - main
-      - chore/afterzero-audit-roadmap
   pull_request:
     branches:
       - main
