@@ -145,3 +145,63 @@
 - `src/components/WorldScreen.tsx` is about 36 KB and `src/store/gameStore.ts` about 18.5 KB. These are audit/refactoring candidates, not proof of dead code.
 - `src/App.tsx` contains a returning-player toast effect whose dependency list is intentionally suppressed; review the closure and timing behavior before altering it.
 - The current branch CI run `38897470596` for commit `89147b111eb931ac9c2d67707850a8465ef697d4` passed. This confirms build/test checks only, not production or Telegram end-to-end readiness.
+
+## Game design source of truth and product development plan (2026-10-16)
+
+### Source documents reviewed
+- `src/imports/pasted_text/game-design-doc.md` — product vision, core loop, screens, visual direction, resources, construction, progression, mysteries/events, pets, social features, collection, and MVP acceptance.
+- `src/imports/pasted_text/afterzero-tech-spec.md` — server-authoritative world state, Telegram Mini App, the seven-handshakes social graph, visits, social actions, persistent progress, and launch criteria.
+- `src/imports/pasted_text/afterzero-spec.md` — engineering workflow: small vertical slices, targeted tests, avoid invented features, validate integrations, and do not claim unverified deployment/readiness.
+- These source documents are retained in `src/imports/pasted_text/`; do not remove them as generated artifacts.
+
+### Product principles to preserve
+- Core loop: explore → collect resources → build → unlock possibilities → discover secrets/events → develop the world → visit other worlds → return and continue.
+- The server is the source of truth for resources, progression, rewards, inventory and social actions. Client UI is not an authority.
+- Keep the premium, non-childish 2.5D island-game direction; keep the store visual-only and real-money purchases disabled for MVP.
+- Build working vertical slices with persistence and tests rather than adding disconnected screens or mock-only functionality.
+- No paid mandatory services; no direct commits to `main`; no PR unless explicitly requested.
+
+### Documented product gaps to reconcile before expanding gameplay
+These are differences between the current implementation and the design target, not permission to change balance silently:
+- Progression currently caps at level 10 in `server/src/game/game.rules.ts`; the design target is at least 30 levels.
+- Pet availability currently starts at level 2 in server progression; the design document specifies level 5.
+- Server building catalog currently contains 6 types; design target is at least 15.
+- The server collection currently explores a small fixed pool of about 10 item IDs; design target is at least 50 collectible items.
+- Dynamic server-generated events, a persistent social graph with seven-handshake paths, world visits/reactions/help, social traces, and rankings/achievements are not yet demonstrated as complete end-to-end features.
+- The current world map and interaction model should be checked against the intended 2D/2.5D tile/isometric direction before introducing a new game engine. Do not migrate to Phaser merely because it appears in a specification; first assess the current implementation and scope a measurable vertical slice.
+
+### Ordered implementation plan
+1. **Server-state correctness (current workstream).**
+   - [ ] Finish regression coverage for successful serialization retries, duplicate collection/cooldown races, daily reward races, production claims and quest claims.
+   - [ ] Audit every mutation for atomic resource checks, cooldown enforcement, idempotency-key consistency and reward application exactly once.
+   - [ ] Verify API error messages are mapped to understandable UI feedback; ensure failed requests do not leave stale optimistic state.
+2. **Client/server synchronization and persistence.**
+   - [ ] Trace each gameplay action from screen → hook → API → controller/DTO → service → database → snapshot → store.
+   - [ ] Cover refresh/reconnect, duplicate taps, expired sessions, delayed responses and concurrent actions with focused tests.
+   - [ ] Verify demo mode remains separate and never overrides an enabled backend session.
+3. **First complete gameplay vertical slice.**
+   - [ ] Reconcile the starter tutorial with the documented new-player path: enter world, gather resources, build the first house, gain XP, see the next unlock.
+   - [ ] Align server and demo-mode rules for costs, unlock levels, rewards, quests and discoveries.
+   - [ ] Add server-backed tests and persistence checks before broadening content.
+4. **Progression and exploration content.**
+   - [ ] Define a versioned progression table for the 30-level target; specify unlocks and XP thresholds before changing the current level cap.
+   - [ ] Reconcile pet unlock timing and ensure pet decay does not punish absence, as required by the design.
+   - [ ] Expand buildings and the collection in data-driven catalogs; add discovery chains and server-persisted event outcomes.
+5. **Social core: seven handshakes.**
+   - [ ] Design data model and authorization for connections, requests, visit permissions, reactions and contributions.
+   - [ ] Implement a minimal persistent contact graph and path/distance calculation with tests.
+   - [ ] Complete a vertical slice: find a player → request/accept a connection → visit an allowed world → leave a reaction/trace → persist it.
+   - [ ] Add cooperative tasks and contribution-based rewards only after the basic social slice is reliable.
+6. **Mobile UX and product polish.**
+   - [ ] Validate the documented screens and core loop on narrow Telegram viewports, including loading/error/empty states, safe areas, touch targets and readable resource indicators.
+   - [ ] Decompose oversized components only where it reduces complexity, preserving visual design and game rules.
+   - [ ] Keep shop as “coming soon”; do not enable real payments during MVP.
+7. **Release validation.**
+   - [ ] Verify migrations and readiness against a real PostgreSQL instance.
+   - [ ] Deploy HTTPS frontend/API, configure Telegram BotFather and run an end-to-end Telegram login/save/return test.
+   - [ ] Verify mobile performance, persistence across sessions, API authorization, basic analytics and recovery from network failures.
+   - [ ] Mark MVP ready only when the end-to-end acceptance path in the design document has actually been exercised.
+
+### Current execution focus
+The active branch remains `fix/server-state-concurrency`. The next code changes should complete server mutation/concurrency tests first, then trace synchronization end-to-end. Product discrepancies above remain explicit backlog items until their rules are defined and tested; do not silently alter progression or resource balance during a concurrency fix.
+
