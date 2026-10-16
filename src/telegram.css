@@ -1,0 +1,16 @@
+:root {
+  --afterzero-viewport-height: var(--tg-viewport-stable-height, 100dvh);
+}
+
+.app-shell {
+  height: var(--afterzero-viewport-height, 100dvh);
+  min-height: 0;
+  padding-top: max(
+    env(safe-area-inset-top, 0px),
+    var(--tg-content-safe-area-inset-top, 0px)
+  );
+  padding-bottom: max(
+    env(safe-area-inset-bottom, 0px),
+    var(--tg-content-safe-area-inset-bottom, 0px)
+  );
+}
