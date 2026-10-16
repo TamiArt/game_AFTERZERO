@@ -56,7 +56,7 @@
 14. [x] Gate gameplay when the backend is configured but Telegram authentication or initial server synchronization has not succeeded.
 15. [x] Renew short-lived JWT sessions while the Mini App is visible.
 16. [x] Document deployment configuration and BotFather connection steps.
-17. [ ] Verify CI for the complete Telegram integration changes.
+17. [x] Verify CI for the Telegram integration changes; the branch build and tests passed on the current integration commit.
 18. [ ] Deploy the frontend and API with real HTTPS origins and PostgreSQL; verify Telegram login end-to-end.
 19. [ ] Verify long-running session behavior when Telegram initData approaches its 24-hour freshness limit.
 20. [ ] Review remaining frontend/server synchronization behavior.
