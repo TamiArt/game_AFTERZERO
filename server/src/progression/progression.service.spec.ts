@@ -60,6 +60,16 @@ describe('ProgressionService idempotency', () => {
     );
     expect(operation).not.toHaveBeenCalled();
   });
+  it('rejects reusing a quest request key for a different quest', async () => {
+    const service = createService({ kind: 'quest:q_collect' });
+    const operation = vi.fn().mockResolvedValue(undefined);
+
+    await expect(run(service, 'quest:q_build', operation)).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(operation).not.toHaveBeenCalled();
+  });
+
   it('retries a progression action after a serializable transaction conflict', async () => {
     const serializationError = new Prisma.PrismaClientKnownRequestError(
       'Serialization failure',
