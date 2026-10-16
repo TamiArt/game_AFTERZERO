@@ -227,7 +227,14 @@ export class ProgressionService {
             const previous = await transaction.gameAction.findUnique({
               where: { playerId_key: { playerId, key } },
             });
-            if (previous) return;
+            if (previous) {
+              if (previous.kind !== kind) {
+                throw new ConflictException(
+                  'Request ID was already used for a different action',
+                );
+              }
+              return;
+            }
             await operation(transaction);
             await transaction.gameAction.create({
               data: { playerId, key, kind, response: { ok: true } },
@@ -237,9 +244,27 @@ export class ProgressionService {
         );
         return;
       } catch (error) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002'
+        ) {
+          const previous = await this.prisma.gameAction.findUnique({
+            where: { playerId_key: { playerId, key } },
+          });
+          if (previous) {
+            if (previous.kind !== kind) {
+              throw new ConflictException(
+                'Request ID was already used for a different action',
+              );
+            }
+            return;
+          }
+          throw error;
+        }
+
         const retryable =
           error instanceof Prisma.PrismaClientKnownRequestError &&
-          (error.code === 'P2002' || error.code === 'P2034');
+          error.code === 'P2034';
         if (!retryable || attempt === 2) throw error;
       }
     }
