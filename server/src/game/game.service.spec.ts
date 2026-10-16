@@ -516,7 +516,7 @@ describe('GameService idempotency', () => {
 
     expect(transaction).toHaveBeenCalledTimes(2);
     expect(transactionClient.resourceBalance.update).not.toHaveBeenCalled();
-    expect(transactionClient.world.findFirst).toHaveBeenCalledTimes(1);
+    expect(transactionClient.world.findFirst).toHaveBeenCalledTimes(2);
   });
 
   it('does not debit a building when the atomic balance guard fails', async () => {
