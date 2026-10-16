@@ -59,6 +59,102 @@ describe('ProgressionService idempotency', () => {
     );
     expect(operation).not.toHaveBeenCalled();
   });
+  it('rejects feeding a pet that is already sufficiently full', async () => {
+    const transaction = {
+      gameAction: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        create: vi.fn(),
+      },
+      world: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: 'world-1',
+          level: 2,
+          xp: 0,
+          petCareCount: 0,
+          foundItems: ['i8'],
+          resources: { wood: 40, stone: 0, metal: 0, energy: 50 },
+          pet: {
+            worldId: 'world-1',
+            hunger: 99,
+            mood: 75,
+            health: 90,
+            xp: 0,
+            level: 1,
+            lastUpdated: new Date(),
+          },
+        }),
+        update: vi.fn(),
+      },
+      pet: { update: vi.fn() },
+    };
+    const prisma = {
+      $transaction: vi.fn(
+        async (callback: (client: typeof transaction) => Promise<unknown>) =>
+          callback(transaction),
+      ),
+    } as unknown as PrismaService;
+    const service = new ProgressionService(prisma, {} as GameService);
+
+    await expect(
+      service.petAction('player-1', {
+        requestId: 'request-feed-full-pet',
+        action: 'feed',
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    expect(transaction.pet.update).not.toHaveBeenCalled();
+    expect(transaction.world.update).not.toHaveBeenCalled();
+    expect(transaction.gameAction.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects resting a pet that is already sufficiently healthy', async () => {
+    const transaction = {
+      gameAction: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        create: vi.fn(),
+      },
+      world: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: 'world-1',
+          level: 2,
+          xp: 0,
+          petCareCount: 0,
+          foundItems: ['i8'],
+          resources: { wood: 40, stone: 0, metal: 0, energy: 50 },
+          pet: {
+            worldId: 'world-1',
+            hunger: 70,
+            mood: 75,
+            health: 99,
+            xp: 0,
+            level: 1,
+            lastUpdated: new Date(),
+          },
+        }),
+        update: vi.fn(),
+      },
+      pet: { update: vi.fn() },
+    };
+    const prisma = {
+      $transaction: vi.fn(
+        async (callback: (client: typeof transaction) => Promise<unknown>) =>
+          callback(transaction),
+      ),
+    } as unknown as PrismaService;
+    const service = new ProgressionService(prisma, {} as GameService);
+
+    await expect(
+      service.petAction('player-1', {
+        requestId: 'request-rest-healthy-pet',
+        action: 'rest',
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    expect(transaction.pet.update).not.toHaveBeenCalled();
+    expect(transaction.world.update).not.toHaveBeenCalled();
+    expect(transaction.gameAction.create).not.toHaveBeenCalled();
+  });
+
   it('does not discover an item when the atomic energy guard fails', async () => {
     const transaction = {
       gameAction: {
