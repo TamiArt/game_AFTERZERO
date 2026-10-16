@@ -66,7 +66,7 @@ export function useBackendSession(
 
     void authenticateTelegram(initData, controller.signal)
       .then(async (session) => {
-        const snapshot = await getGameState();
+        const snapshot = await getGameState(controller.signal);
         if (controller.signal.aborted) return;
         lastRefreshAt.current = Date.now();
         useGameStore.getState().syncServerState(snapshot);
