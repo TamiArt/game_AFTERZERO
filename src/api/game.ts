@@ -50,11 +50,17 @@ export interface GameSnapshot {
 const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/$/, '');
 const TOKEN_KEY = 'afterzero.accessToken';
 
+import { notifySessionExpired } from './sessionLifecycle';
+
 function expireSession(): void {
-  sessionStorage.removeItem(TOKEN_KEY);
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new Event('afterzero:session-expired'));
-  }
+  notifySessionExpired({
+    removeToken: () => sessionStorage.removeItem(TOKEN_KEY),
+    dispatch: (eventName) => {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event(eventName));
+      }
+    },
+  });
 }
 
 export class GameApiError extends Error {
@@ -79,7 +85,10 @@ async function gameRequest(
   options?: { body?: object; method?: 'GET' | 'POST' },
 ): Promise<GameSnapshot> {
   const token = sessionStorage.getItem(TOKEN_KEY);
-  if (!apiUrl || !token) throw new GameApiError('Backend session is unavailable', 401);
+  if (!apiUrl || !token) {
+    if (apiUrl && !token) expireSession();
+    throw new GameApiError('Backend session is unavailable', 401);
+  }
 
   const response = await fetch(`${apiUrl}/game${path}`, {
     method: options?.method ?? 'GET',
@@ -114,7 +123,7 @@ function progressionRequest(
     body: JSON.stringify(body),
   }).then(async (response) => {
     if (!response.ok) {
-      if (response.status === 401) sessionStorage.removeItem(TOKEN_KEY);
+      if (response.status === 401) expireSession();
       const payload = (await response.json().catch(() => null)) as {
         message?: string;
       } | null;
