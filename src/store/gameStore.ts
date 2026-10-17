@@ -56,9 +56,11 @@ export interface FloatNum {
 function uid() { return Math.random().toString(36).slice(2, 10); }
 
 // XP нужно набрать на текущем уровне, чтобы перейти на следующий
+const MAX_PLAYER_LEVEL = 30;
 const LEVEL_XP = [0, 200, 300, 500, 800, 1200, 1800, 2600];
 export function calcXpNext(lvl: number): number {
-  return LEVEL_XP[lvl] ?? Math.floor(800 * Math.pow(1.35, lvl - 1));
+  const boundedLevel = Math.max(1, Math.min(MAX_PLAYER_LEVEL, Math.floor(lvl)));
+  return LEVEL_XP[boundedLevel] ?? Math.floor(800 * Math.pow(1.35, boundedLevel - 1));
 }
 
 const COLLECT_CD = 30_000;
@@ -253,16 +255,19 @@ export const useGameStore = create<GameState>()(
       gainXP: (amount) => {
         set((s) => {
           let { xp, level } = s;
-          xp += amount;
-          const needed = calcXpNext(level);
-          if (xp >= needed && level < 10) {
-            xp -= needed;
+          if (level >= MAX_PLAYER_LEVEL) return { level: MAX_PLAYER_LEVEL, xp: 0 };
+          xp = Math.max(0, xp + amount);
+          let levelUpPending: number | null = null;
+          while (level < MAX_PLAYER_LEVEL && xp >= calcXpNext(level)) {
+            xp -= calcXpNext(level);
             level += 1;
-            // Discover pet at level 2
-            const petUpdate = level === 2 ? { pet: { ...s.pet, discovered: true } } : {};
-            return { xp, level, levelUpPending: level, ...petUpdate };
+            levelUpPending = level;
           }
-          return { xp, level };
+          if (level >= MAX_PLAYER_LEVEL) xp = 0;
+          const petUpdate = level >= 5 && !s.pet.discovered
+            ? { pet: { ...s.pet, discovered: true } }
+            : {};
+          return { xp, level, levelUpPending: levelUpPending ?? s.levelUpPending, ...petUpdate };
         });
       },
 
@@ -321,17 +326,18 @@ export const useGameStore = create<GameState>()(
         set((s) => {
           if (!s.pet.discovered) return {};
           const now = Date.now();
-          const mins = (now - s.pet.lastUpdated) / 60000;
-          if (mins < 0.1) return {};
-          return {
-            pet: {
-              ...s.pet,
-              hunger: Math.max(0, s.pet.hunger - mins * 3),
-              mood: Math.max(0, s.pet.mood - mins * 1.5),
-              health: Math.max(0, s.pet.health - mins * 0.3),
-              lastUpdated: now,
-            },
-          };
+          const elapsedMs = Math.max(0, now - s.pet.lastUpdated);
+          const minutes = Math.min(120, Math.floor(elapsedMs / 60000));
+          if (minutes < 1) return {};
+          let xp = s.pet.xp + minutes;
+          let level = s.pet.level;
+          while (level < 10 && xp >= Math.floor(200 * Math.pow(1.5, level - 1))) {
+            xp -= Math.floor(200 * Math.pow(1.5, level - 1));
+            level += 1;
+          }
+          if (level >= 10) xp = 0;
+          const lastUpdated = elapsedMs > 120 * 60000 ? now : s.pet.lastUpdated + minutes * 60000;
+          return { pet: { ...s.pet, xp, level, lastUpdated } };
         });
       },
 
