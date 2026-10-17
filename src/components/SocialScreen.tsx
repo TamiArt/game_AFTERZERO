@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
+import { NPCPortrait, type NPCPortraitKind } from './art/NPCPortrait';
 
-interface Friend {
+function portraitKindForFriend(id: string): NPCPortraitKind {\n  if (id === 'f1') return 'botanist';\n  if (id === 'f2') return 'traveler';\n  if (id === 'f3' || id === 'f4') return 'researcher';\n  return 'engineer';\n}\n\ninterface Friend {
   id: string;
   name: string;
   emoji: string;
@@ -39,7 +40,7 @@ function FriendWorldView({ friend, onLeave }: { friend: Friend; onLeave: () => v
           borderRadius: 8, color: '#6b7a99', cursor: 'pointer', width: 32, height: 32,
           display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
         }}>←</button>
-        <span style={{ fontSize: 22 }}>{friend.emoji}</span>
+        <NPCPortrait kind={portraitKindForFriend(friend.id)} size={36} />
         <div>
           <div style={{ fontSize: 14, fontWeight: 800, color: '#e8eeff' }}>{friend.name} · {friend.worldName}</div>
           <div style={{ fontSize: 10, color: '#6b7a99' }}>Уровень {friend.level} · {friend.lastSeen}</div>
