@@ -2,7 +2,14 @@ import { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { NPCPortrait, type NPCPortraitKind } from './art/NPCPortrait';
 
-function portraitKindForFriend(id: string): NPCPortraitKind {\n  if (id === 'f1') return 'botanist';\n  if (id === 'f2') return 'traveler';\n  if (id === 'f3' || id === 'f4') return 'researcher';\n  return 'engineer';\n}\n\ninterface Friend {
+function portraitKindForFriend(id: string): NPCPortraitKind {
+  if (id === 'f1') return 'botanist';
+  if (id === 'f2') return 'traveler';
+  if (id === 'f3' || id === 'f4') return 'researcher';
+  return 'engineer';
+}
+
+interface Friend {
   id: string;
   name: string;
   emoji: string;
