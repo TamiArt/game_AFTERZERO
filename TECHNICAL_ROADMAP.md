@@ -86,7 +86,8 @@
 - [x] Persist pet offline XP/level advancement when the server refreshes world state.
 - [x] Align pet discovery and pet-action API access with the documented level-5 unlock; the pet quest uses the same minimum level.
 - [x] Add regression tests for 30-level progression, XP cap, threshold growth, capped offline production in server/demo mode, and pet offline progression/care stability.
-- [ ] Run the full test suite and frontend/API build in CI; confirm the resulting checks before treating this iteration as verified.
+- [x] Confirm the Vercel check reports success for the current iteration commit.
+- [ ] Run the full Vitest suite and API TypeScript build; these checks have not been independently executed in this session, so the code/test changes are not yet fully verified.
 - [ ] Define documented level milestone rewards/unlocks beyond existing examples before implementing a complete level-by-level reward table.
 
 **Offline design decisions for this iteration:** buildings finish against server time and are reconciled on the next world refresh; production accumulates for at most one hour; pet care stats do not decay while away, while pet XP accrues for at most two hours per absence. These limits are centralized and covered by regression tests. They can be tuned later from playtesting without changing persistence architecture.
