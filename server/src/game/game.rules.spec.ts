@@ -14,7 +14,7 @@ describe('game rules', () => {
   });
 
   it('supports all 30 levels and carries XP across several thresholds', () => {
-    const result = addExperience(8, 0, 100_000);
+    const result = addExperience(8, 0, 100_000_000);
     expect(result.level).toBe(30);
     expect(result.xp).toBe(0);
   });
