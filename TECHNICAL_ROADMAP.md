@@ -228,3 +228,14 @@ The active branch remains `fix/server-state-concurrency`. A regression test now 
 - [x] Added a luminous moonflower to the island map (available from level 2).
 - [x] Added a small AI-core technology relic to the island map (available from level 4).
 - [ ] Verify CI and mobile/isometric readability; these new objects are decorative visuals and do not award resources or introduce new gameplay mechanics.
+
+
+## Social world map — initial UI prototype (2026-10-17)
+- [x] Add an interactive SVG contact-network visualization to the existing Social screen, with city labels, nodes, colored edges and selectable node cards.
+- [x] Add city-entry UI and a local demo preference so the player can preview the map without GPS/address collection.
+- [x] Extend `docs/ART_DIRECTION.md` with global-map visuals, seven-handshake graph semantics, city privacy and data integrity rules.
+- [ ] Replace demo nodes/edges with authenticated server data; do not present hard-coded examples as real users.
+- [ ] Add persisted public city profile (normalized city name and city-level coordinates), required-profile onboarding, city selection/validation and edit flow.
+- [ ] Add server-authoritative contact edges, relationship strength from validated interactions, and shortest-path search up to seven handshakes with privacy/block filtering.
+- [ ] Add database migration, API/DTO/service/controller tests and client API integration; ensure existing players with no city complete the profile before appearing in the global map.
+- [ ] Verify map responsiveness, label collisions, keyboard access, reduced-motion behavior and CI.
