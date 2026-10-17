@@ -231,7 +231,7 @@ The active branch remains `fix/server-state-concurrency`. A regression test now 
 
 
 ## Current iteration: progression unlock parity
-- [x] Align the Pet screen's locked-state copy and progress indicator with the documented level-5 pet unlock.
+- [x] Align the Pet screen's locked-state copy/progress indicator and the world-map pet marker with the documented level-5 pet unlock.
 - [x] Add regression coverage that the pet quest unlock is level 5 and all quest rules use valid level/progress/reward values.
 - [x] Keep the existing server-authoritative quest rewards and level thresholds unchanged where the design document has no explicit replacement values.
 - [ ] Audit and align every building, territory, portal, collection and social unlock across server rules, demo mode and UI copy.
