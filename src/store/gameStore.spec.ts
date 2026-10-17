@@ -109,3 +109,56 @@ describe('gameStore building completion', () => {
     expect(state.questProgress.q_build).toBeUndefined();
   });
 });
+
+
+describe('gameStore progression and offline production', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    useGameStore.setState({
+      level: 1,
+      xp: 0,
+      levelUpPending: null,
+      lastProductionAt: Date.now(),
+      resources: { wood: 0, stone: 0, metal: 0, energy: 0 },
+      buildings: [],
+      toasts: [],
+      floatNums: [],
+      foundItems: ['i8'],
+      questProgress: {},
+      totalBuilt: 0,
+    });
+  });
+
+  afterEach(() => {
+    vi.runOnlyPendingTimers();
+    vi.useRealTimers();
+  });
+
+  it('carries local XP across multiple levels and stops at level 30', () => {
+    useGameStore.getState().gainXP(1_000);
+    expect(useGameStore.getState()).toMatchObject({ level: 4, xp: 0 });
+
+    useGameStore.getState().gainXP(100_000);
+    expect(useGameStore.getState()).toMatchObject({ level: 30, xp: 0 });
+  });
+
+  it('accrues demo production on return and prevents repeated capped claims', () => {
+    const now = Date.now();
+    useGameStore.setState({
+      lastProductionAt: now - 24 * 60 * 60 * 1000,
+      resources: { wood: 0, stone: 0, metal: 0, energy: 0 },
+      buildings: [
+        { id: 'garden', type: 'garden', tileC: 1, tileR: 1, startedAt: 0, durationSec: 1, endsAt: null },
+        { id: 'farm', type: 'farm', tileC: 2, tileR: 1, startedAt: 0, durationSec: 1, endsAt: null },
+        { id: 'workshop', type: 'workshop', tileC: 3, tileR: 1, startedAt: 0, durationSec: 1, endsAt: null },
+      ],
+    });
+
+    useGameStore.getState().claimOfflineProduction();
+    expect(useGameStore.getState().resources).toEqual({ wood: 0, stone: 120, metal: 120, energy: 240 });
+    expect(useGameStore.getState().lastProductionAt).toBe(now);
+
+    useGameStore.getState().claimOfflineProduction();
+    expect(useGameStore.getState().resources).toEqual({ wood: 0, stone: 120, metal: 120, energy: 240 });
+  });
+});
