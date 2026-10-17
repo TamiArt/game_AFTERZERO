@@ -62,6 +62,23 @@ export const RESOURCE_NODE_RULES: Record<string, ResourceNodeRule> = {
 };
 
 export const MAX_PLAYER_LEVEL = 30;
+export const PRODUCTION_INTERVAL_MS = 30_000;
+export const MAX_OFFLINE_PRODUCTION_PERIODS = 120;
+
+export function offlineProductionWindow(lastProductionAt: Date, now: Date): {
+  periods: number;
+  nextProductionAt: Date;
+} {
+  const elapsedMs = Math.max(0, now.getTime() - lastProductionAt.getTime());
+  const elapsedPeriods = Math.floor(elapsedMs / PRODUCTION_INTERVAL_MS);
+  const periods = Math.min(MAX_OFFLINE_PRODUCTION_PERIODS, elapsedPeriods);
+  // If the cap was reached, discard excess elapsed time. Otherwise preserve
+  // the fractional interval so short sessions do not lose production time.
+  const nextProductionAt = elapsedPeriods > MAX_OFFLINE_PRODUCTION_PERIODS
+    ? now
+    : new Date(lastProductionAt.getTime() + periods * PRODUCTION_INTERVAL_MS);
+  return { periods, nextProductionAt };
+}
 
 const LEVEL_XP = [0, 200, 300, 500, 800, 1200, 1800, 2600];
 
