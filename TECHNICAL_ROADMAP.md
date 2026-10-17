@@ -76,6 +76,19 @@
 22. [x] Make collection energy debit atomic and add a regression test for a failed balance guard.
 23. [x] Validate the web app origin and PostgreSQL connection URL at startup; require HTTPS for production origins and cover validation with tests.
 
+## Current iteration: 30-level progression and fair offline progress
+- [x] Extend authoritative server XP progression to level 30 using the existing scalable threshold formula; discard excess XP at the level cap.
+- [x] Align local/demo XP progression with the 30-level cap and preserve XP overflow across multiple level-ups.
+- [x] Fix offline production cap accounting: production is limited to 120 × 30-second periods (one hour); elapsed time beyond the cap is discarded so repeated claims cannot drain an old backlog. Partial intervals are preserved below the cap.
+- [x] Stop penalizing pet care stats during absence; pet gains 1 XP per full offline minute, capped at 120 minutes per absence, and pet level remains capped at 10.
+- [x] Persist pet offline XP/level advancement when the server refreshes world state.
+- [x] Align pet discovery and pet-action API access with the documented level-5 unlock; the pet quest uses the same minimum level.
+- [x] Add regression tests for 30-level progression, XP cap, threshold growth, capped offline production, and pet offline progression/care stability.
+- [ ] Run the full test suite and frontend/API build in CI; confirm the resulting checks before treating this iteration as verified.
+- [ ] Define documented level milestone rewards/unlocks beyond existing examples before implementing a complete level-by-level reward table.
+
+**Offline design decisions for this iteration:** buildings finish against server time and are reconciled on the next world refresh; production accumulates for at most one hour; pet care stats do not decay while away, while pet XP accrues for at most two hours per absence. These limits are centralized and covered by regression tests. They can be tuned later from playtesting without changing persistence architecture.
+
 ## Next priorities
 - Continue reviewing server authorization, input validation, idempotency and transaction behavior; collection energy and production URL configuration now have explicit guards.
 - Audit timer-driven actions and reward paths for duplicate execution; building completion now has client-side in-flight deduplication and a demo-store idempotency guard.
