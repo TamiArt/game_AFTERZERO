@@ -54,7 +54,7 @@ export function PetScreen() {
           Питомец ждёт тебя
         </h2>
         <p style={{ fontSize: 13, color: '#6b7a99', textAlign: 'center', lineHeight: 1.6, maxWidth: 260 }}>
-          Нокс появится на острове когда твоя цивилизация достигнет <span style={{ color: '#00e5d0', fontWeight: 700 }}>Уровня 2</span>.
+          Нокс появится на острове когда твоя цивилизация достигнет <span style={{ color: '#00e5d0', fontWeight: 700 }}>Уровня 5</span>.
           Продолжай строить и исследовать!
         </p>
 
@@ -64,9 +64,9 @@ export function PetScreen() {
           background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
           borderRadius: 12, padding: '12px 16px',
         }}>
-          <div style={{ fontSize: 11, color: '#6b7a99', marginBottom: 6 }}>Прогресс до Уровня 2</div>
+          <div style={{ fontSize: 11, color: '#6b7a99', marginBottom: 6 }}>Прогресс до Уровня 5</div>
           <div style={{ height: 6, background: 'rgba(255,255,255,0.07)', borderRadius: 3, overflow: 'hidden' }}>
-            <div style={{ width: `${Math.min(100, (level / 2) * 100)}%`, height: '100%', background: 'linear-gradient(90deg, #a060ff, #00e5d0)', borderRadius: 3 }} />
+            <div style={{ width: `${Math.min(100, (level / 5) * 100)}%`, height: '100%', background: 'linear-gradient(90deg, #a060ff, #00e5d0)', borderRadius: 3 }} />
           </div>
         </div>
       </div>
