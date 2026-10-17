@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useGameStore, type PlacedBuilding, type ResourceKey } from '../store/gameStore';
 import { useAuthoritativeGame } from '../hooks/useAuthoritativeGame';
+import { WorldSprite } from './art/WorldSprite';
 
 // ─── Изометрические константы ─────────────────────────────────────────────────
 
@@ -767,9 +768,9 @@ export function WorldScreen() {
                 onCooldown={cd}
                 onCollect={() => handleStoneClick(tKey, x, y)} />
             );
-            if (obj.type === 'glowcap') return <Glowcap key={`sobj-${obj.id}-${idx}`} c={obj.c} r={obj.r} />;
-            if (obj.type === 'moonflower') return <Moonflower key={`sobj-${obj.id}-${idx}`} c={obj.c} r={obj.r} />;
-            if (obj.type === 'airelic') return <AICoreRelic key={`sobj-${obj.id}-${idx}`} c={obj.c} r={obj.r} />;
+            if (obj.type === 'glowcap') return <WorldSprite key={`sobj-${obj.id}-${idx}`} kind="mushroom" x={x} y={y - TD} />;
+            if (obj.type === 'moonflower') return <WorldSprite key={`sobj-${obj.id}-${idx}`} kind="moonflower" x={x} y={y - TD} />;
+            if (obj.type === 'airelic') return <WorldSprite key={`sobj-${obj.id}-${idx}`} kind="ai-core" x={x} y={y - TD} />;
             if (obj.type === 'crystal') return (
               <CrystalNode key={`sobj-${obj.id}-${idx}`} c={obj.c} r={obj.r}
                 onCooldown={cd}
