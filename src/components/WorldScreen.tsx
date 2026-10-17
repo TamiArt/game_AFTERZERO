@@ -77,6 +77,8 @@ const STATIC_OBJECTS: StaticObj[] = [
   { id: 'tree-3',     type: 'tree',   c: 5, r: 3, scale: 0.7, minLevel: 3, resource: 'wood' },
   { id: 'crystal-1',  type: 'crystal',c: 4, r: 4, minLevel: 3, resource: 'metal' },
   { id: 'glowcap-1',  type: 'glowcap', c: 2, r: 4, minLevel: 3 },
+  { id: 'moonflower-1', type: 'moonflower', c: 1, r: 4, minLevel: 2 },
+  { id: 'ai-relic-1', type: 'airelic', c: 5, r: 4, minLevel: 4 },
 ];
 
 // ─── Определения зданий ───────────────────────────────────────────────────────
@@ -214,6 +216,57 @@ function Glowcap({ c, r }: { c: number; r: number }) {
       <path d={`M ${x - 18} ${gY - 22} Q ${x - 15} ${gY - 39} ${x} ${gY - 40} Q ${x + 18} ${gY - 39} ${x + 20} ${gY - 22} Q ${x + 7} ${gY - 14} ${x - 18} ${gY - 22} Z`} fill={`url(#${id}-cap)`} stroke="#ffd5b0" strokeOpacity=".72" strokeWidth="1" filter={`url(#${id}-bloom)`} />
       <path d={`M ${x - 14} ${gY - 22} Q ${x} ${gY - 17} ${x + 15} ${gY - 22} M ${x - 8} ${gY - 21} L ${x - 3} ${gY - 14} M ${x} ${gY - 21} L ${x + 1} ${gY - 14} M ${x + 8} ${gY - 21} L ${x + 5} ${gY - 14}`} fill="none" stroke="#ffe0c6" strokeOpacity=".65" strokeWidth=".8" />
       {[-10, 4, 13].map((dx, i) => <circle key={i} cx={x + dx} cy={gY - 31 - (i % 2) * 3} r={1.1} fill="#ffe7b8" filter={`url(#${id}-bloom)`} />)}
+    </g>
+  );
+}
+
+function Moonflower({ c, r }: { c: number; r: number }) {
+  const { x, y } = tPos(c, r);
+  const gY = y - TD;
+  const id = `moonflower-${c}-${r}`;
+  return (
+    <g role="img" aria-label="Лунный цветок">
+      <defs>
+        <radialGradient id={`${id}-petal`} cx="35%" cy="20%" r="80%">
+          <stop offset="0" stopColor="#f4ffe2" /><stop offset=".55" stopColor="#b4f5c9" /><stop offset="1" stopColor="#5bc7b6" />
+        </radialGradient>
+        <filter id={`${id}-glow`} x="-100%" y="-100%" width="300%" height="300%">
+          <feGaussianBlur stdDeviation="3" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+      </defs>
+      <ellipse cx={x} cy={gY + 2} rx="13" ry="4" fill="#8bffd4" opacity=".18" filter={`url(#${id}-glow)`} />
+      <path d={`M ${x} ${gY + 2} Q ${x - 2} ${gY - 9} ${x + 2} ${gY - 18}`} fill="none" stroke="#64d9a9" strokeWidth="2" />
+      <path d={`M ${x} ${gY - 7} Q ${x - 12} ${gY - 17} ${x - 14} ${gY - 9} Q ${x - 9} ${gY - 3} ${x} ${gY - 7} M ${x + 1} ${gY - 12} Q ${x + 12} ${gY - 23} ${x + 14} ${gY - 15} Q ${x + 9} ${gY - 9} ${x + 1} ${gY - 12}`} fill="#5bc7a6" stroke="#a5f7cb" strokeWidth=".6" />
+      {Array.from({ length: 6 }, (_, i) => {
+        const a = (Math.PI * 2 * i) / 6, px = x + Math.cos(a) * 7, py = gY - 22 + Math.sin(a) * 6;
+        return <ellipse key={i} cx={px} cy={py} rx="4.5" ry="7" transform={`rotate(${i * 60} ${px} ${py})`} fill={`url(#${id}-petal)`} stroke="#eaffd8" strokeOpacity=".65" strokeWidth=".6" filter={`url(#${id}-glow)`} />;
+      })}
+      <circle cx={x} cy={gY - 22} r="3.2" fill="#fff5a5" filter={`url(#${id}-glow)`} />
+      <circle cx={x - 11} cy={gY - 30} r="1" fill="#efffc5" /><circle cx={x + 13} cy={gY - 26} r="1.2" fill="#efffc5" />
+    </g>
+  );
+}
+
+function AICoreRelic({ c, r }: { c: number; r: number }) {
+  const { x, y } = tPos(c, r);
+  const gY = y - TD, id = `ai-relic-${c}-${r}`;
+  return (
+    <g role="img" aria-label="Технологический артефакт ИИ">
+      <defs>
+        <linearGradient id={`${id}-body`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#c3faff" /><stop offset=".35" stopColor="#378bb5" /><stop offset="1" stopColor="#222451" />
+        </linearGradient>
+        <filter id={`${id}-glow`} x="-120%" y="-120%" width="340%" height="340%">
+          <feGaussianBlur stdDeviation="3.2" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+      </defs>
+      <ellipse cx={x} cy={gY + 3} rx="14" ry="4" fill="#4ddfff" opacity=".18" filter={`url(#${id}-glow)`} />
+      <ellipse cx={x} cy={gY - 11} rx="13" ry="5" fill="none" stroke="#58dfff" strokeWidth="1" opacity=".75" transform={`rotate(-20 ${x} ${gY - 11})`} />
+      <ellipse cx={x} cy={gY - 11} rx="10" ry="4" fill="none" stroke="#9d8cff" strokeWidth="1" opacity=".75" transform={`rotate(55 ${x} ${gY - 11})`} />
+      <path d={`M ${x} ${gY - 24} L ${x + 10} ${gY - 17} L ${x + 8} ${gY - 5} L ${x} ${gY - 1} L ${x - 8} ${gY - 5} L ${x - 10} ${gY - 17} Z`} fill={`url(#${id}-body)`} stroke="#a9f7ff" strokeWidth=".8" filter={`url(#${id}-glow)`} />
+      <circle cx={x} cy={gY - 13} r="4" fill="#7ff6ff" filter={`url(#${id}-glow)`} /><circle cx={x} cy={gY - 13} r="1.4" fill="#f3ffff" />
+      {[-1, 1].map((dir) => <g key={dir} stroke="#8ceeff" strokeWidth="1" opacity=".9"><path d={`M ${x + dir * 9} ${gY - 14} L ${x + dir * 14} ${gY - 18} L ${x + dir * 17} ${gY - 18}`} fill="none" /><circle cx={x + dir * 18} cy={gY - 18} r="1.4" fill="#a9faff" /></g>)}
+      <path d={`M ${x - 5} ${gY - 6} L ${x - 2} ${gY - 3} L ${x + 4} ${gY - 8}`} fill="none" stroke="#e7ffff" strokeWidth="1.2" strokeLinecap="round" />
     </g>
   );
 }
@@ -715,6 +768,8 @@ export function WorldScreen() {
                 onCollect={() => handleStoneClick(tKey, x, y)} />
             );
             if (obj.type === 'glowcap') return <Glowcap key={`sobj-${obj.id}-${idx}`} c={obj.c} r={obj.r} />;
+            if (obj.type === 'moonflower') return <Moonflower key={`sobj-${obj.id}-${idx}`} c={obj.c} r={obj.r} />;
+            if (obj.type === 'airelic') return <AICoreRelic key={`sobj-${obj.id}-${idx}`} c={obj.c} r={obj.r} />;
             if (obj.type === 'crystal') return (
               <CrystalNode key={`sobj-${obj.id}-${idx}`} c={obj.c} r={obj.r}
                 onCooldown={cd}
