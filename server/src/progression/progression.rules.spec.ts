@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  degradedPet,
+  advancePetOffline,
+  PET_OFFLINE_PROGRESS_CAP_MINUTES,
   questProgress,
   uniqueItems,
 } from './progression.rules.js';
@@ -27,14 +28,26 @@ describe('progression rules', () => {
     });
   });
 
-  it('degrades pet stats according to elapsed server time', () => {
+  it('keeps pet care stats stable and grants offline XP', () => {
     const lastUpdated = new Date('2026-01-01T00:00:00.000Z');
-    const pet = degradedPet(
-      { hunger: 80, mood: 75, health: 90, lastUpdated },
+    const pet = advancePetOffline(
+      { hunger: 80, mood: 75, health: 90, xp: 0, level: 1, lastUpdated },
       new Date('2026-01-01T00:10:00.000Z'),
     );
 
-    expect(pet).toMatchObject({ hunger: 50, mood: 60, health: 87 });
+    expect(pet).toMatchObject({ hunger: 80, mood: 75, health: 90, xp: 10, level: 1 });
+    expect(pet.lastUpdated).toEqual(new Date('2026-01-01T00:10:00.000Z'));
+  });
+
+  it('caps pet offline progress and discards time beyond the cap', () => {
+    const lastUpdated = new Date('2026-01-01T00:00:00.000Z');
+    const pet = advancePetOffline(
+      { hunger: 80, mood: 75, health: 90, xp: 0, level: 1, lastUpdated },
+      new Date('2026-01-02T00:00:00.000Z'),
+    );
+
+    expect(pet.xp).toBe(PET_OFFLINE_PROGRESS_CAP_MINUTES);
+    expect(pet.lastUpdated).toEqual(new Date('2026-01-02T00:00:00.000Z'));
   });
 
   it('adds collection items without duplicates', () => {
