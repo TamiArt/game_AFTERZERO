@@ -14,6 +14,7 @@ import {
   addExperience,
   BUILDING_RULES,
   dailyReward,
+  offlineProductionWindow,
   randomResourceAmount,
   RESOURCE_NODE_RULES,
   xpRequired,
@@ -33,7 +34,6 @@ type TransactionClient = Omit<
 >;
 
 const RESOURCE_COOLDOWN_MS = 30_000;
-const PRODUCTION_INTERVAL_MS = 30_000;
 
 @Injectable()
 export class GameService {
@@ -276,13 +276,8 @@ export class GameService {
     return this.idempotent(playerId, requestId, 'production', async (tx) => {
       const now = new Date();
       const world = await this.requireWorld(tx, playerId);
-      const periods = Math.min(
-        120,
-        Math.floor(
-          (now.getTime() - world.lastProductionAt.getTime()) /
-            PRODUCTION_INTERVAL_MS,
-        ),
-      );
+      const productionWindow = offlineProductionWindow(world.lastProductionAt, now);
+      const { periods } = productionWindow;
       if (periods < 1) return this.snapshot(tx, playerId);
 
       const completedBuildings = await tx.building.groupBy({
@@ -315,10 +310,7 @@ export class GameService {
       await tx.world.update({
         where: { id: world.id },
         data: {
-          lastProductionAt: new Date(
-            world.lastProductionAt.getTime() +
-              periods * PRODUCTION_INTERVAL_MS,
-          ),
+          lastProductionAt: productionWindow.nextProductionAt,
         },
       });
       return this.snapshot(tx, playerId);
