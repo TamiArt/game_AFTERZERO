@@ -145,11 +145,7 @@ export function useAuthoritativeGame() {
   const claimProduction = useCallback(() => {
     const state = useGameStore.getState();
     if (!isGameBackendConfigured()) {
-      for (const building of state.buildings.filter((item) => item.endsAt === null)) {
-        if (building.type === 'garden') state.addResource('energy', 2);
-        if (building.type === 'farm') state.addResource('stone', 1);
-        if (building.type === 'workshop') state.addResource('metal', 1);
-      }
+      state.claimOfflineProduction();
       return;
     }
     if (!requireSession()) return;
