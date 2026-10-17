@@ -207,8 +207,8 @@ These are differences between the current implementation and the design target, 
    - [ ] Align server and demo-mode rules for costs, unlock levels, rewards, quests and discoveries.
    - [ ] Add server-backed tests and persistence checks before broadening content.
 4. **Progression and exploration content.**
-   - [ ] Define a versioned progression table for the 30-level target; specify unlocks and XP thresholds before changing the current level cap.
-   - [ ] Reconcile pet unlock timing and ensure pet decay does not punish absence, as required by the design.
+   - [ ] Define a versioned 30-level progression table with explicit milestone unlocks and XP thresholds; the current cap is 30, but only documented milestones should be authoritative until this table is agreed.
+   - [x] Align pet unlock timing across server quest rules, local/demo state and the Pet screen: level 5. Offline care stats no longer decay; bounded offline XP is applied after unlock.
    - [ ] Expand buildings and the collection in data-driven catalogs; add discovery chains and server-persisted event outcomes.
 5. **Social core: seven handshakes.**
    - [ ] Design data model and authorization for connections, requests, visit permissions, reactions and contributions.
@@ -229,6 +229,14 @@ These are differences between the current implementation and the design target, 
 The active branch remains `fix/server-state-concurrency`. A regression test now verifies that an active resource-node cooldown rejects collection without changing world resources or recording a successful action. Separate regression coverage now proves a game mutation retries successfully after a serializable transaction conflict, and that the successful operation is applied once. Regression tests now simulate a competing daily reward claim and a competing production claim winning between serializable attempts; the retried request must not grant either reward twice. Regression coverage now also simulates a competing resource collection starting the cooldown and a competing quest claim winning between serializable attempts; retries must reject the stale collection and avoid granting the quest reward twice. The server mutation/concurrency block is now complete for the covered cases: the final branch-head CI run passed (run 38903816184). Client/server synchronization is in progress: gameplay mutations are now serialized together with snapshot application so delayed network responses cannot overwrite a newer snapshot. Focused tests cover ordering and recovery after a failed request; A gameplay or progression API 401 now clears the token and emits one shared session-expired event; missing tokens on a configured backend follow the same path. A cancelled authentication request checks its AbortSignal before storing a token. Successful periodic/foreground refresh now reloads and applies the authoritative game snapshot, while aborted/stale refresh work cannot update the session state. Pure unit tests cover token-cleanup/notification ordering plus refresh/auth/snapshot ordering and cancellation guards. Mounted-hook integration tests and real Telegram background/foreground/network-transition verification remain open; CI run 38905488458 passed for the previous version of the session-refresh changes, and the latest test expansion is awaiting CI. Idempotency keys are also now bound to the concrete target for collection nodes, building type/coordinates, building completion IDs and quest IDs, so accidental reuse of one request ID for a different target is rejected rather than silently replaying a different action. Server mutation/concurrency coverage is complete for this block; proceed with synchronization tracing end-to-end. Product discrepancies above remain explicit backlog items until their rules are defined and tested; do not silently alter progression or resource balance during a concurrency fix.
 
 
+
+## Current iteration: progression unlock parity
+- [x] Align the Pet screen's locked-state copy and progress indicator with the documented level-5 pet unlock.
+- [x] Add regression coverage that the pet quest unlock is level 5 and all quest rules use valid level/progress/reward values.
+- [x] Keep the existing server-authoritative quest rewards and level thresholds unchanged where the design document has no explicit replacement values.
+- [ ] Audit and align every building, territory, portal, collection and social unlock across server rules, demo mode and UI copy.
+- [ ] Define the missing 30-level milestone table before adding new unlocks or reward balancing.
+- [ ] Run full Vitest/API build and confirm CI for this iteration; current branch-head checks must be checked after the latest commit.
 
 ## Visual direction and bioluminescent world slice (2026-10-17)
 - [x] Add `docs/ART_DIRECTION.md` as the shared visual source of truth for creatures, environment, items, lighting, UI, animation and implementation constraints, based on the user's visual reference collage.
