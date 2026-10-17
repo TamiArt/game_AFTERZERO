@@ -247,10 +247,36 @@ function Player({ c, r }: { c: number; r: number }) {
 function PetOnMap({ c, r }: { c: number; r: number }) {
   const { x, y } = tPos(c, r);
   const gY = y - TD;
+  const id = `map-nox-${c}-${r}`;
   return (
-    <g style={{ animation: 'floatBob 2.5s ease-in-out 0.3s infinite' }}>
-      <ellipse cx={x} cy={gY + 3} rx={7} ry={3} fill="rgba(0,0,0,0.25)" />
-      <text x={x} y={gY - 8} textAnchor="middle" fontSize="20" style={{ userSelect: 'none' }}>🦊</text>
+    <g style={{ animation: 'floatBob 2.5s ease-in-out 0.3s infinite' }} role="img" aria-label="Нокс, светящийся спутник">
+      <defs>
+        <radialGradient id={`${id}-fur`} cx="35%" cy="24%" r="78%">
+          <stop offset="0" stopColor="#f1fff7" />
+          <stop offset=".35" stopColor="#9af6e3" />
+          <stop offset=".76" stopColor="#4baeb8" />
+          <stop offset="1" stopColor="#34386c" />
+        </radialGradient>
+        <linearGradient id={`${id}-tail`} x1="0" y1="0" x2="1" y2="1">
+          <stop stopColor="#8affdf" />
+          <stop offset="1" stopColor="#a17cff" stopOpacity=".25" />
+        </linearGradient>
+        <filter id={`${id}-glow`} x="-100%" y="-100%" width="300%" height="300%">
+          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+      </defs>
+      <ellipse cx={x} cy={gY + 4} rx={11} ry={4} fill="#000814" opacity=".45" />
+      <ellipse cx={x} cy={gY - 3} rx={15} ry={12} fill="#55e6d2" opacity=".13" filter={`url(#${id}-glow)`} />
+      <path d={`M ${x + 8} ${gY - 4} C ${x + 25} ${gY - 17}, ${x + 30} ${gY + 1}, ${x + 15} ${gY + 3} C ${x + 23} ${gY - 4}, ${x + 17} ${gY - 9}, ${x + 10} ${gY + 1} Z`} fill={`url(#${id}-tail)`} filter={`url(#${id}-glow)`} />
+      <path d={`M ${x - 11} ${gY - 8} L ${x - 12} ${gY - 23} Q ${x - 11} ${gY - 26} ${x - 7} ${gY - 22} L ${x - 1} ${gY - 14} M ${x + 11} ${gY - 8} L ${x + 12} ${gY - 23} Q ${x + 11} ${gY - 26} ${x + 7} ${gY - 22} L ${x + 1} ${gY - 14}`} fill="#68dccc" stroke="#c0fff3" strokeOpacity=".6" strokeWidth=".8" />
+      <ellipse cx={x} cy={gY - 5} rx={13} ry={15} fill={`url(#${id}-fur)`} stroke="#c1fff0" strokeOpacity=".7" strokeWidth=".8" filter={`url(#${id}-glow)`} />
+      <ellipse cx={x - 5} cy={gY - 7} rx={2.6} ry={3.4} fill="#09283b" />
+      <ellipse cx={x + 5} cy={gY - 7} rx={2.6} ry={3.4} fill="#09283b" />
+      <circle cx={x - 4.4} cy={gY - 8.2} r={1} fill="#fff" />
+      <circle cx={x + 5.6} cy={gY - 8.2} r={1} fill="#fff" />
+      <path d={`M ${x - 2.5} ${gY - 1} Q ${x} ${gY + 1} ${x + 2.5} ${gY - 1}`} fill="none" stroke="#19465b" strokeWidth="1" strokeLinecap="round" />
+      {[-13, 14, 2].map((dx, i) => <circle key={i} cx={x + dx} cy={gY - 20 - (i % 2) * 4} r={1.1} fill="#d6fff5" filter={`url(#${id}-glow)`} />)}
     </g>
   );
 }
