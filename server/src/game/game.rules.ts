@@ -61,10 +61,13 @@ export const RESOURCE_NODE_RULES: Record<string, ResourceNodeRule> = {
   '4,4': { resource: 'metal', minimum: 2, maximum: 6, minimumLevel: 3 },
 };
 
+export const MAX_PLAYER_LEVEL = 30;
+
 const LEVEL_XP = [0, 200, 300, 500, 800, 1200, 1800, 2600];
 
 export function xpRequired(level: number): number {
-  return LEVEL_XP[level] ?? Math.floor(800 * Math.pow(1.35, level - 1));
+  const boundedLevel = Math.max(1, Math.min(MAX_PLAYER_LEVEL, Math.floor(level)));
+  return LEVEL_XP[boundedLevel] ?? Math.floor(800 * Math.pow(1.35, boundedLevel - 1));
 }
 
 export function addExperience(
@@ -72,14 +75,17 @@ export function addExperience(
   xp: number,
   amount: number,
 ): { level: number; xp: number } {
-  let nextLevel = level;
-  let nextXp = xp + amount;
+  let nextLevel = Math.max(1, Math.min(MAX_PLAYER_LEVEL, Math.floor(level)));
+  let nextXp = Math.max(0, xp + amount);
 
-  while (nextLevel < 10 && nextXp >= xpRequired(nextLevel)) {
+  // Level 30 is the first-release cap; keeping it as a constant makes future
+  // expansion a data change rather than a scattered gameplay-rule edit.
+  while (nextLevel < MAX_PLAYER_LEVEL && nextXp >= xpRequired(nextLevel)) {
     nextXp -= xpRequired(nextLevel);
     nextLevel += 1;
   }
 
+  if (nextLevel === MAX_PLAYER_LEVEL) nextXp = 0;
   return { level: nextLevel, xp: nextXp };
 }
 
