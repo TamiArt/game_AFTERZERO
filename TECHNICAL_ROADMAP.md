@@ -250,4 +250,4 @@ The active branch remains `fix/server-state-concurrency`. A regression test now 
 - [ ] Manually inspect each cleaned PNG at native size and on the actual game background; replace crops that lose fine details or include neighboring fragments.
 - [ ] Add an asset preview/gallery or visual regression checks for the extracted pack.
 - [ ] Integrate production-clean standalone PNGs where they provide more fidelity than the in-code SVG; keep mockup crops out of live UI.
-- [ ] Verify CI for this slice; report only checks confirmed by workflow results.
+- [x] Verify CI for the integrated SVG slice: workflow 39027081260 succeeded for commit 5e5ca006dbaacbc2bc638b8cd4c96b04229dae1c; extracted PNG pack remains a separate downloadable artifact and is not committed as binary assets.
