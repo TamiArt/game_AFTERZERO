@@ -76,6 +76,7 @@ const STATIC_OBJECTS: StaticObj[] = [
 
   { id: 'tree-3',     type: 'tree',   c: 5, r: 3, scale: 0.7, minLevel: 3, resource: 'wood' },
   { id: 'crystal-1',  type: 'crystal',c: 4, r: 4, minLevel: 3, resource: 'metal' },
+  { id: 'glowcap-1',  type: 'glowcap', c: 2, r: 4, minLevel: 3 },
 ];
 
 // ─── Определения зданий ───────────────────────────────────────────────────────
@@ -187,6 +188,32 @@ function CrystalNode({ c, r, onCollect, onCooldown }: { c: number; r: number; on
       <circle cx={x} cy={gY - 6} r={3} fill="rgba(160,100,255,0.6)"
         style={{ animation: 'portalPulse 1.5s ease-in-out infinite' }} />
       {onCooldown && <text x={x} y={gY - 30} textAnchor="middle" fill="#f5a857" fontSize="12">⏳</text>}
+    </g>
+  );
+}
+
+function Glowcap({ c, r }: { c: number; r: number }) {
+  const { x, y } = tPos(c, r);
+  const gY = y - TD;
+  const id = `glowcap-${c}-${r}`;
+  return (
+    <g aria-label="Светящийся гриб" role="img">
+      <defs>
+        <radialGradient id={`${id}-cap`} cx="42%" cy="26%" r="75%">
+          <stop offset="0" stopColor="#ffe8bd" />
+          <stop offset=".5" stopColor="#ffb48a" />
+          <stop offset="1" stopColor="#b94e79" />
+        </radialGradient>
+        <filter id={`${id}-bloom`} x="-120%" y="-120%" width="340%" height="340%">
+          <feGaussianBlur stdDeviation="5" result="bloom" />
+          <feMerge><feMergeNode in="bloom" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+      </defs>
+      <ellipse cx={x} cy={gY + 3} rx={18} ry={6} fill="#ff8b91" opacity=".18" filter={`url(#${id}-bloom)`} />
+      <path d={`M ${x - 3} ${gY - 4} Q ${x - 1} ${gY - 15} ${x + 2} ${gY - 24} L ${x + 7} ${gY - 24} Q ${x + 4} ${gY - 12} ${x + 5} ${gY - 3} Z`} fill="#bd6d75" stroke="#ffc2a0" strokeOpacity=".5" strokeWidth=".8" />
+      <path d={`M ${x - 18} ${gY - 22} Q ${x - 15} ${gY - 39} ${x} ${gY - 40} Q ${x + 18} ${gY - 39} ${x + 20} ${gY - 22} Q ${x + 7} ${gY - 14} ${x - 18} ${gY - 22} Z`} fill={`url(#${id}-cap)`} stroke="#ffd5b0" strokeOpacity=".72" strokeWidth="1" filter={`url(#${id}-bloom)`} />
+      <path d={`M ${x - 14} ${gY - 22} Q ${x} ${gY - 17} ${x + 15} ${gY - 22} M ${x - 8} ${gY - 21} L ${x - 3} ${gY - 14} M ${x} ${gY - 21} L ${x + 1} ${gY - 14} M ${x + 8} ${gY - 21} L ${x + 5} ${gY - 14}`} fill="none" stroke="#ffe0c6" strokeOpacity=".65" strokeWidth=".8" />
+      {[-10, 4, 13].map((dx, i) => <circle key={i} cx={x + dx} cy={gY - 31 - (i % 2) * 3} r={1.1} fill="#ffe7b8" filter={`url(#${id}-bloom)`} />)}
     </g>
   );
 }
@@ -687,6 +714,7 @@ export function WorldScreen() {
                 onCooldown={cd}
                 onCollect={() => handleStoneClick(tKey, x, y)} />
             );
+            if (obj.type === 'glowcap') return <Glowcap key={`sobj-${obj.id}-${idx}`} c={obj.c} r={obj.r} />;
             if (obj.type === 'crystal') return (
               <CrystalNode key={`sobj-${obj.id}-${idx}`} c={obj.c} r={obj.r}
                 onCooldown={cd}
