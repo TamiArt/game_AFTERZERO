@@ -206,7 +206,9 @@ describe('ProgressionService idempotency', () => {
       world: {
         findFirst: vi.fn().mockResolvedValue({
           id: 'world-1',
-          level: 2,
+          // Pet actions are only available after the level-five unlock.
+          // Keep this fixture unlocked so the test reaches the health conflict.
+          level: 5,
           xp: 0,
           petCareCount: 0,
           foundItems: ['i8'],
