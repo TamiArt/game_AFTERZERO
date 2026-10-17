@@ -140,7 +140,10 @@ function WorldContactMap({ city, onSelect }: { city: string; onSelect: (point: C
 
 export function SocialScreen() {
   const [view, setView] = useState<'friends' | 'network'>('friends');
-  const [visiting, setVisiting] = useState<Friend | null>(null);\n  const [city, setCity] = useState(() => { try { return localStorage.getItem('afterzero.profile.city') ?? ''; } catch { return ''; } });\n  const [selectedPoint, setSelectedPoint] = useState<CityPoint | null>(null);\n  const saveCity = () => { const clean = city.trim().slice(0, 80); setCity(clean); try { localStorage.setItem('afterzero.profile.city', clean); } catch { /* storage may be unavailable */ } };
+  const [visiting, setVisiting] = useState<Friend | null>(null);
+  const [city, setCity] = useState(() => { try { return localStorage.getItem('afterzero.profile.city') ?? ''; } catch { return ''; } });
+  const [selectedPoint, setSelectedPoint] = useState<CityPoint | null>(null);
+  const saveCity = () => { const clean = city.trim().slice(0, 80); setCity(clean); try { localStorage.setItem('afterzero.profile.city', clean); } catch { /* storage may be unavailable */ } };
   const visitFriend = useGameStore((s) => s?.visitFriend ?? (() => {}));
   const leaveVisit  = useGameStore((s) => s?.leaveVisit ?? (() => {}));
   const addToast    = useGameStore((s) => s?.addToast ?? (() => {}));
