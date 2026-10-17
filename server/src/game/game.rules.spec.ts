@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   addExperience,
   dailyReward,
+  MAX_OFFLINE_PRODUCTION_PERIODS,
+  offlineProductionWindow,
   randomResourceAmount,
   RESOURCE_NODE_RULES,
 } from './game.rules.js';
@@ -26,6 +28,23 @@ describe('game rules', () => {
     for (let level = 1; level < 30; level += 1) {
       expect(xpRequired(level + 1)).toBeGreaterThan(xpRequired(level));
     }
+  });
+
+  it('preserves partial production intervals when returning before the cap', () => {
+    const last = new Date('2026-01-01T00:00:00.000Z');
+    const now = new Date('2026-01-01T00:01:15.000Z');
+    const window = offlineProductionWindow(last, now);
+    expect(window.periods).toBe(2);
+    expect(window.nextProductionAt).toEqual(new Date('2026-01-01T00:01:00.000Z'));
+  });
+
+  it('caps offline production and discards excess time to prevent repeated cap claims', () => {
+    const last = new Date('2026-01-01T00:00:00.000Z');
+    const now = new Date('2026-01-02T00:00:00.000Z');
+    const window = offlineProductionWindow(last, now);
+    expect(window.periods).toBe(MAX_OFFLINE_PRODUCTION_PERIODS);
+    expect(window.nextProductionAt).toEqual(now);
+    expect(offlineProductionWindow(window.nextProductionAt, now).periods).toBe(0);
   });
 
   it('calculates level-scaled daily rewards', () => {
