@@ -390,7 +390,9 @@ export class GameService {
     const world = await this.requireWorld(transaction, playerId);
     const now = new Date();
     const pet = world.pet
-      ? advancePetOffline(world.pet, now)
+      ? world.level >= 5
+        ? advancePetOffline(world.pet, now)
+        : { ...world.pet, lastUpdated: now }
       : {
           name: 'Нокс',
           species: 'Лисица-призрак',
