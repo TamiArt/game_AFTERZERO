@@ -79,11 +79,13 @@
 ## Current iteration: 30-level progression and fair offline progress
 - [x] Extend authoritative server XP progression to level 30 using the existing scalable threshold formula; discard excess XP at the level cap.
 - [x] Align local/demo XP progression with the 30-level cap and preserve XP overflow across multiple level-ups.
-- [x] Fix offline production cap accounting: production is limited to 120 × 30-second periods (one hour); elapsed time beyond the cap is discarded so repeated claims cannot drain an old backlog. Partial intervals are preserved below the cap.
+- [x] Fix offline production cap accounting on the server and in demo mode: production is limited to 120 × 30-second periods (one hour); elapsed time beyond the cap is discarded so repeated claims cannot drain an old backlog. Partial intervals are preserved below the cap.
+- [x] Reconcile production immediately on app return rather than waiting for the first 30-second polling tick.
+- [x] Persist the demo-mode production timestamp and reconcile buildings that finished while the app was closed.
 - [x] Stop penalizing pet care stats during absence; pet gains 1 XP per full offline minute, capped at 120 minutes per absence, and pet level remains capped at 10.
 - [x] Persist pet offline XP/level advancement when the server refreshes world state.
 - [x] Align pet discovery and pet-action API access with the documented level-5 unlock; the pet quest uses the same minimum level.
-- [x] Add regression tests for 30-level progression, XP cap, threshold growth, capped offline production, and pet offline progression/care stability.
+- [x] Add regression tests for 30-level progression, XP cap, threshold growth, capped offline production in server/demo mode, and pet offline progression/care stability.
 - [ ] Run the full test suite and frontend/API build in CI; confirm the resulting checks before treating this iteration as verified.
 - [ ] Define documented level milestone rewards/unlocks beyond existing examples before implementing a complete level-by-level reward table.
 
