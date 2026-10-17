@@ -138,7 +138,7 @@ describe('gameStore progression and offline production', () => {
     useGameStore.getState().gainXP(1_000);
     expect(useGameStore.getState()).toMatchObject({ level: 4, xp: 0 });
 
-    useGameStore.getState().gainXP(100_000);
+    useGameStore.getState().gainXP(100_000_000);
     expect(useGameStore.getState()).toMatchObject({ level: 30, xp: 0 });
   });
 
