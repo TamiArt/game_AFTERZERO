@@ -73,7 +73,7 @@ const STATIC_OBJECTS: StaticObj[] = [
 
   { id: 'tree-2',     type: 'tree',   c: 1, r: 2, scale: 0.85, minLevel: 2, resource: 'wood' },
   { id: 'stone-1',    type: 'stone',  c: 4, r: 2, minLevel: 2, resource: 'stone' },
-  { id: 'pet-map',    type: 'petmap', c: 2, r: 2, minLevel: 2 },
+  { id: 'pet-map',    type: 'petmap', c: 2, r: 2, minLevel: 5 },
 
   { id: 'tree-3',     type: 'tree',   c: 5, r: 3, scale: 0.7, minLevel: 3, resource: 'wood' },
   { id: 'crystal-1',  type: 'crystal',c: 4, r: 4, minLevel: 3, resource: 'metal' },
