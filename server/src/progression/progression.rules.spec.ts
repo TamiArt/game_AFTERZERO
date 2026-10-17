@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   advancePetOffline,
   PET_OFFLINE_PROGRESS_CAP_MINUTES,
+  QUEST_RULES,
   questProgress,
   uniqueItems,
 } from './progression.rules.js';
@@ -26,6 +27,20 @@ describe('progression rules', () => {
       q_builder: 3,
       q_visit: 1,
     });
+  });
+
+  it('keeps the pet quest locked until the documented level-five milestone', () => {
+    expect(QUEST_RULES.q_pet.minimumLevel).toBe(5);
+  });
+
+  it('defines valid level and completion requirements for every quest', () => {
+    for (const [id, rule] of Object.entries(QUEST_RULES)) {
+      expect(id).toMatch(/^q_/);
+      expect(rule.minimumLevel).toBeGreaterThanOrEqual(1);
+      expect(rule.minimumLevel).toBeLessThanOrEqual(30);
+      expect(rule.required).toBeGreaterThan(0);
+      expect(rule.rewardXp).toBeGreaterThanOrEqual(0);
+    }
   });
 
   it('keeps pet care stats stable and grants offline XP', () => {
