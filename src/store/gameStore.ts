@@ -78,6 +78,7 @@ interface GameState {
   resources: Resources;
   buildings: PlacedBuilding[];
   collectCooldowns: Record<string, number>;
+  lastProductionAt: number;
 
   pet: Pet;
   foundItems: string[];
@@ -132,6 +133,7 @@ interface GameState {
   leaveVisit: () => void;
 
   claimDailyReward: () => void;
+  claimOfflineProduction: () => void;
   discoverItem: (itemId: string) => void;
 
   addToast: (text: string, icon: string, color?: string) => void;
@@ -167,6 +169,7 @@ export const useGameStore = create<GameState>()(
       resources: { wood: 40, stone: 0, metal: 0, energy: 50 },
       buildings: [],
       collectCooldowns: {},
+      lastProductionAt: Date.now(),
 
       pet: DEFAULT_PET,
       foundItems: ['i8'],
@@ -409,6 +412,40 @@ export const useGameStore = create<GameState>()(
 
       leaveVisit: () => set({ visitingFriend: null }),
 
+      claimOfflineProduction: () => {
+        const now = Date.now();
+        const state = get();
+        // Reconcile completed construction first, including while the app was closed.
+        state.buildings
+          .filter((building) => building.endsAt !== null && building.endsAt <= now)
+          .forEach((building) => get().finishBuilding(building.id));
+
+        const lastProductionAt = get().lastProductionAt || now;
+        const elapsedPeriods = Math.floor((now - lastProductionAt) / 30_000);
+        const periods = Math.min(120, Math.max(0, elapsedPeriods));
+        if (periods < 1) return;
+
+        let energy = 0;
+        let stone = 0;
+        let metal = 0;
+        for (const building of get().buildings) {
+          if (building.endsAt !== null) continue;
+          if (building.type === 'garden') energy += 2 * periods;
+          if (building.type === 'farm') stone += periods;
+          if (building.type === 'workshop') metal += periods;
+        }
+        const nextProductionAt = elapsedPeriods > 120 ? now : lastProductionAt + periods * 30_000;
+        set((current) => ({
+          resources: {
+            ...current.resources,
+            energy: current.resources.energy + energy,
+            stone: current.resources.stone + stone,
+            metal: current.resources.metal + metal,
+          },
+          lastProductionAt: nextProductionAt,
+        }));
+      },
+
       // ─── Ежедневная награда ─────────────────────────────────────────────────
 
       claimDailyReward: () => {
@@ -493,6 +530,7 @@ export const useGameStore = create<GameState>()(
         resources:       s.resources,
         buildings:       s.buildings,
         collectCooldowns:s.collectCooldowns,
+        lastProductionAt:s.lastProductionAt,
         pet:             s.pet,
         foundItems:      s.foundItems,
         woodCollects:    s.woodCollects,
