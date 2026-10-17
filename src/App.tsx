@@ -108,6 +108,8 @@ export default function App() {
       return;
     }
 
+    // Reconcile elapsed offline production immediately on return, then poll.
+    claimProduction();
     const id = setInterval(() => {
       claimProduction();
     }, 30_000);
