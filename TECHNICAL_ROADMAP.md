@@ -220,3 +220,11 @@ The active branch remains `fix/server-state-concurrency`. A regression test now 
 - [x] Add a decorative bioluminescent fantasy mushroom to the level-3 island scene, with warm translucent cap, visible gills, spores and restrained glow.
 - [ ] Run frontend build and tests for the visual slice; verify mobile rendering, duplicate SVG filter IDs, reduced-motion and battery-graphics behavior.
 - [ ] Extend the art system into reusable species variants and themed item/environment assets without changing authoritative pet state or inventing game mechanics.
+
+
+## Visual direction — second reference set (2026-10-17)
+- [x] Extended `docs/ART_DIRECTION.md` without replacing the original: forest/root passages, hidden focal points, botanical discoveries, flower portals, glass biomes and exploration/atlas UI.
+- [x] Added visual guidance for botanist-themed finds (flowers, fungi, spores, floral portals) and IT-themed finds (AI cores, computational crystals, biomchanical relics, diagnostics).
+- [x] Added a luminous moonflower to the island map (available from level 2).
+- [x] Added a small AI-core technology relic to the island map (available from level 4).
+- [ ] Verify CI and mobile/isometric readability; these new objects are decorative visuals and do not award resources or introduce new gameplay mechanics.
