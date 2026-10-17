@@ -21,7 +21,7 @@ import {
 } from './game.rules.js';
 import type { GameSnapshot } from './game.types.js';
 import {
-  degradedPet,
+  advancePetOffline,
   petXpRequired,
   questProgress,
   uniqueItems,
@@ -396,8 +396,9 @@ export class GameService {
     playerId: string,
   ): Promise<GameSnapshot> {
     const world = await this.requireWorld(transaction, playerId);
+    const now = new Date();
     const pet = world.pet
-      ? degradedPet(world.pet, new Date())
+      ? advancePetOffline(world.pet, now)
       : {
           name: 'Нокс',
           species: 'Лисица-призрак',
@@ -406,8 +407,14 @@ export class GameService {
           hunger: 80,
           mood: 75,
           health: 90,
-          lastUpdated: new Date(),
+          lastUpdated: now,
         };
+    if (world.pet && pet.lastUpdated.getTime() !== world.pet.lastUpdated.getTime()) {
+      await transaction.pet.update({
+        where: { worldId: world.id },
+        data: { xp: pet.xp, level: pet.level, lastUpdated: pet.lastUpdated },
+      });
+    }
     const foundItems =
       world.level >= 3
         ? uniqueItems(world.foundItems, ['i3'])
@@ -476,7 +483,7 @@ export class GameService {
           mood: pet.mood,
           health: pet.health,
           lastUpdated: pet.lastUpdated.getTime(),
-          discovered: world.level >= 2,
+          discovered: world.level >= 5,
         },
       },
     };
