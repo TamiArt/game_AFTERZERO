@@ -35,7 +35,7 @@ export const QUEST_RULES: Record<string, QuestRule> = {
     rewardResources: { stone: 15 },
   },
   q_pet: {
-    minimumLevel: 2,
+    minimumLevel: 5,
     required: 1,
     rewardXp: 30,
     rewardItems: ['i12'],
@@ -92,21 +92,41 @@ interface PetStats {
   hunger: number;
   mood: number;
   health: number;
+  xp: number;
+  level: number;
   lastUpdated: Date;
 }
 
-export function degradedPet<T extends PetStats>(pet: T, now: Date): T {
-  const minutes = Math.max(
-    0,
-    (now.getTime() - pet.lastUpdated.getTime()) / 60_000,
+export const PET_OFFLINE_PROGRESS_CAP_MINUTES = 120;
+export const MAX_PET_LEVEL = 10;
+export const PET_OFFLINE_XP_PER_MINUTE = 1;
+
+/**
+ * Advance a pet during absence without degrading its care stats.
+ * Offline XP is capped to two hours per absence; elapsed time beyond that cap
+ * is discarded so repeatedly reopening the game cannot farm unlimited XP.
+ */
+export function advancePetOffline<T extends PetStats>(pet: T, now: Date): T {
+  const elapsedMs = Math.max(0, now.getTime() - pet.lastUpdated.getTime());
+  const elapsedMinutes = Math.min(
+    PET_OFFLINE_PROGRESS_CAP_MINUTES,
+    Math.floor(elapsedMs / 60_000),
   );
-  return {
-    ...pet,
-    hunger: Math.max(0, pet.hunger - minutes * 3),
-    mood: Math.max(0, pet.mood - minutes * 1.5),
-    health: Math.max(0, pet.health - minutes * 0.3),
-    lastUpdated: now,
-  };
+  if (elapsedMinutes < 1) return pet;
+
+  let xp = pet.xp + elapsedMinutes * PET_OFFLINE_XP_PER_MINUTE;
+  let level = pet.level;
+  while (level < MAX_PET_LEVEL && xp >= petXpRequired(level)) {
+    xp -= petXpRequired(level);
+    level += 1;
+  }
+  if (level >= MAX_PET_LEVEL) xp = 0;
+
+  const lastUpdated = elapsedMs > PET_OFFLINE_PROGRESS_CAP_MINUTES * 60_000
+    ? now
+    : new Date(pet.lastUpdated.getTime() + elapsedMinutes * 60_000);
+
+  return { ...pet, xp, level, lastUpdated };
 }
 
 export function petXpRequired(level: number): number {
