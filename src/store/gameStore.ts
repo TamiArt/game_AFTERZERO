@@ -56,9 +56,11 @@ export interface FloatNum {
 function uid() { return Math.random().toString(36).slice(2, 10); }
 
 // XP нужно набрать на текущем уровне, чтобы перейти на следующий
+const MAX_PLAYER_LEVEL = 30;
 const LEVEL_XP = [0, 200, 300, 500, 800, 1200, 1800, 2600];
 export function calcXpNext(lvl: number): number {
-  return LEVEL_XP[lvl] ?? Math.floor(800 * Math.pow(1.35, lvl - 1));
+  const boundedLevel = Math.max(1, Math.min(MAX_PLAYER_LEVEL, Math.floor(lvl)));
+  return LEVEL_XP[boundedLevel] ?? Math.floor(800 * Math.pow(1.35, boundedLevel - 1));
 }
 
 const COLLECT_CD = 30_000;
@@ -76,6 +78,7 @@ interface GameState {
   resources: Resources;
   buildings: PlacedBuilding[];
   collectCooldowns: Record<string, number>;
+  lastProductionAt: number;
 
   pet: Pet;
   foundItems: string[];
@@ -130,6 +133,7 @@ interface GameState {
   leaveVisit: () => void;
 
   claimDailyReward: () => void;
+  claimOfflineProduction: () => void;
   discoverItem: (itemId: string) => void;
 
   addToast: (text: string, icon: string, color?: string) => void;
@@ -165,6 +169,7 @@ export const useGameStore = create<GameState>()(
       resources: { wood: 40, stone: 0, metal: 0, energy: 50 },
       buildings: [],
       collectCooldowns: {},
+      lastProductionAt: Date.now(),
 
       pet: DEFAULT_PET,
       foundItems: ['i8'],
@@ -253,16 +258,19 @@ export const useGameStore = create<GameState>()(
       gainXP: (amount) => {
         set((s) => {
           let { xp, level } = s;
-          xp += amount;
-          const needed = calcXpNext(level);
-          if (xp >= needed && level < 10) {
-            xp -= needed;
+          if (level >= MAX_PLAYER_LEVEL) return { level: MAX_PLAYER_LEVEL, xp: 0 };
+          xp = Math.max(0, xp + amount);
+          let levelUpPending: number | null = null;
+          while (level < MAX_PLAYER_LEVEL && xp >= calcXpNext(level)) {
+            xp -= calcXpNext(level);
             level += 1;
-            // Discover pet at level 2
-            const petUpdate = level === 2 ? { pet: { ...s.pet, discovered: true } } : {};
-            return { xp, level, levelUpPending: level, ...petUpdate };
+            levelUpPending = level;
           }
-          return { xp, level };
+          if (level >= MAX_PLAYER_LEVEL) xp = 0;
+          const petUpdate = level >= 5 && !s.pet.discovered
+            ? { pet: { ...s.pet, discovered: true } }
+            : {};
+          return { xp, level, levelUpPending: levelUpPending ?? s.levelUpPending, ...petUpdate };
         });
       },
 
@@ -321,17 +329,18 @@ export const useGameStore = create<GameState>()(
         set((s) => {
           if (!s.pet.discovered) return {};
           const now = Date.now();
-          const mins = (now - s.pet.lastUpdated) / 60000;
-          if (mins < 0.1) return {};
-          return {
-            pet: {
-              ...s.pet,
-              hunger: Math.max(0, s.pet.hunger - mins * 3),
-              mood: Math.max(0, s.pet.mood - mins * 1.5),
-              health: Math.max(0, s.pet.health - mins * 0.3),
-              lastUpdated: now,
-            },
-          };
+          const elapsedMs = Math.max(0, now - s.pet.lastUpdated);
+          const minutes = Math.min(120, Math.floor(elapsedMs / 60000));
+          if (minutes < 1) return {};
+          let xp = s.pet.xp + minutes;
+          let level = s.pet.level;
+          while (level < 10 && xp >= Math.floor(200 * Math.pow(1.5, level - 1))) {
+            xp -= Math.floor(200 * Math.pow(1.5, level - 1));
+            level += 1;
+          }
+          if (level >= 10) xp = 0;
+          const lastUpdated = elapsedMs > 120 * 60000 ? now : s.pet.lastUpdated + minutes * 60000;
+          return { pet: { ...s.pet, xp, level, lastUpdated } };
         });
       },
 
@@ -402,6 +411,40 @@ export const useGameStore = create<GameState>()(
       },
 
       leaveVisit: () => set({ visitingFriend: null }),
+
+      claimOfflineProduction: () => {
+        const now = Date.now();
+        const state = get();
+        // Reconcile completed construction first, including while the app was closed.
+        state.buildings
+          .filter((building) => building.endsAt !== null && building.endsAt <= now)
+          .forEach((building) => get().finishBuilding(building.id));
+
+        const lastProductionAt = get().lastProductionAt || now;
+        const elapsedPeriods = Math.floor((now - lastProductionAt) / 30_000);
+        const periods = Math.min(120, Math.max(0, elapsedPeriods));
+        if (periods < 1) return;
+
+        let energy = 0;
+        let stone = 0;
+        let metal = 0;
+        for (const building of get().buildings) {
+          if (building.endsAt !== null) continue;
+          if (building.type === 'garden') energy += 2 * periods;
+          if (building.type === 'farm') stone += periods;
+          if (building.type === 'workshop') metal += periods;
+        }
+        const nextProductionAt = elapsedPeriods > 120 ? now : lastProductionAt + periods * 30_000;
+        set((current) => ({
+          resources: {
+            ...current.resources,
+            energy: current.resources.energy + energy,
+            stone: current.resources.stone + stone,
+            metal: current.resources.metal + metal,
+          },
+          lastProductionAt: nextProductionAt,
+        }));
+      },
 
       // ─── Ежедневная награда ─────────────────────────────────────────────────
 
@@ -487,6 +530,7 @@ export const useGameStore = create<GameState>()(
         resources:       s.resources,
         buildings:       s.buildings,
         collectCooldowns:s.collectCooldowns,
+        lastProductionAt:s.lastProductionAt,
         pet:             s.pet,
         foundItems:      s.foundItems,
         woodCollects:    s.woodCollects,

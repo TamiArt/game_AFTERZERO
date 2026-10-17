@@ -57,6 +57,23 @@ describe('TelegramInitDataService', () => {
     );
   });
 
+  it('rejects init data with an auth date too far in the future', () => {
+    const authDate = Math.floor(NOW.getTime() / 1000) + 61;
+
+    expect(() =>
+      createService().verify(
+        createInitData({ auth_date: String(authDate) }),
+        NOW,
+      ),
+    ).toThrow('Telegram authentication data has expired');
+  });
+
+  it('rejects a malformed auth date', () => {
+    expect(() =>
+      createService().verify(createInitData({ auth_date: 'not-a-date' }), NOW),
+    ).toThrow('Telegram authentication data has expired');
+  });
+
   it('rejects expired init data', () => {
     const authDate = Math.floor(NOW.getTime() / 1000) - 86_401;
 

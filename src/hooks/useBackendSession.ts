@@ -5,6 +5,7 @@ import {
   isBackendConfigured,
 } from '../api/auth';
 import { getGameState } from '../api/game';
+import { refreshAuthoritativeSession } from '../api/sessionLifecycle';
 import { useGameStore } from '../store/gameStore';
 
 type SessionStatus =
@@ -36,6 +37,28 @@ export function useBackendSession(
   const refreshInFlight = useRef(false);
 
   useEffect(() => {
+    const expireSession = () => {
+      setState({
+        error: 'Игровая сессия истекла. Откройте приложение заново через Telegram.',
+        session: null,
+        status: 'error',
+      });
+    };
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === ACCESS_TOKEN_KEY && event.newValue === null) {
+        expireSession();
+      }
+    };
+
+    window.addEventListener('afterzero:session-expired', expireSession);
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      window.removeEventListener('afterzero:session-expired', expireSession);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!isBackendConfigured() || !telegramReady || !initData) return;
 
     const controller = new AbortController();
@@ -43,7 +66,7 @@ export function useBackendSession(
 
     void authenticateTelegram(initData, controller.signal)
       .then(async (session) => {
-        const snapshot = await getGameState();
+        const snapshot = await getGameState(controller.signal);
         if (controller.signal.aborted) return;
         lastRefreshAt.current = Date.now();
         useGameStore.getState().syncServerState(snapshot);
@@ -68,19 +91,42 @@ export function useBackendSession(
   useEffect(() => {
     if (state.status !== 'authenticated' || !initData) return;
 
-    const refresh = () => {
+    let disposed = false;
+    let refreshController: AbortController | null = null;
+
+    const refresh = (force = false) => {
       if (
         document.visibilityState !== 'visible' ||
         refreshInFlight.current ||
-        Date.now() - lastRefreshAt.current < SESSION_REFRESH_INTERVAL_MS
+        (!force && Date.now() - lastRefreshAt.current < SESSION_REFRESH_INTERVAL_MS)
       ) {
         return;
       }
 
       refreshInFlight.current = true;
       lastRefreshAt.current = Date.now();
-      void authenticateTelegram(initData)
-        .catch((error: unknown) => {
+      refreshController = new AbortController();
+      const signal = refreshController.signal;
+
+      void refreshAuthoritativeSession({
+        authenticate: (refreshSignal) =>
+          authenticateTelegram(initData, refreshSignal),
+        getSnapshot: getGameState,
+        signal,
+        isCurrent: () => !disposed,
+        applySnapshot: (snapshot) =>
+          useGameStore.getState().syncServerState(snapshot),
+        onSession: (session) =>
+          setState({ error: null, session, status: 'authenticated' }),
+      }).catch((error: unknown) => {
+          if (
+            disposed ||
+            signal.aborted ||
+            (error instanceof DOMException && error.name === 'AbortError')
+          ) {
+            return;
+          }
+
           lastRefreshAt.current =
             Date.now() - SESSION_REFRESH_INTERVAL_MS + 60_000;
           if (
@@ -97,14 +143,23 @@ export function useBackendSession(
         })
         .finally(() => {
           refreshInFlight.current = false;
+          refreshController = null;
         });
     };
 
+    const handleOnline = () => refresh(true);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') refresh(true);
+    };
     const interval = window.setInterval(refresh, 60_000);
-    document.addEventListener('visibilitychange', refresh);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('online', handleOnline);
     return () => {
+      disposed = true;
+      refreshController?.abort();
       window.clearInterval(interval);
-      document.removeEventListener('visibilitychange', refresh);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('online', handleOnline);
     };
   }, [initData, state.status]);
 

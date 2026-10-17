@@ -14,6 +14,7 @@ import {
   addExperience,
   BUILDING_RULES,
   dailyReward,
+  offlineProductionWindow,
   randomResourceAmount,
   RESOURCE_NODE_RULES,
   xpRequired,
@@ -21,7 +22,7 @@ import {
 } from './game.rules.js';
 import type { GameSnapshot } from './game.types.js';
 import {
-  degradedPet,
+  advancePetOffline,
   petXpRequired,
   questProgress,
   uniqueItems,
@@ -33,24 +34,47 @@ type TransactionClient = Omit<
 >;
 
 const RESOURCE_COOLDOWN_MS = 30_000;
-const PRODUCTION_INTERVAL_MS = 30_000;
 
 @Injectable()
 export class GameService {
   constructor(private readonly prisma: PrismaService) {}
 
-  getState(playerId: string): Promise<GameSnapshot> {
-    return this.prisma.$transaction(async (transaction) => {
-      await this.completeReadyBuildings(transaction, playerId, new Date());
-      return this.snapshot(transaction, playerId);
-    });
+  async getState(playerId: string): Promise<GameSnapshot> {
+    // Reading the world can complete buildings and award XP, so this is a
+    // write-capable transaction. Serializable isolation prevents concurrent
+    // state refreshes from applying rewards from the same stale world snapshot.
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        return await this.prisma.$transaction(
+          async (transaction) => {
+            await this.completeReadyBuildings(transaction, playerId, new Date());
+            return this.snapshot(transaction, playerId);
+          },
+          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        );
+      } catch (error) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2034' &&
+          attempt < 2
+        ) {
+          continue;
+        }
+        throw error;
+      }
+    }
+    throw new ConflictException('World state could not be synchronized');
   }
 
   collect(
     playerId: string,
     input: CollectResourceDto,
   ): Promise<GameSnapshot> {
-    return this.idempotent(playerId, input.requestId, 'collect', async (tx) => {
+    return this.idempotent(
+      playerId,
+      input.requestId,
+      `collect:${input.nodeId}`,
+      async (tx) => {
       const now = new Date();
       const world = await this.requireWorld(tx, playerId);
       const rule = RESOURCE_NODE_RULES[input.nodeId];
@@ -119,7 +143,11 @@ export class GameService {
     playerId: string,
     input: StartBuildingDto,
   ): Promise<GameSnapshot> {
-    return this.idempotent(playerId, input.requestId, 'build', async (tx) => {
+    return this.idempotent(
+      playerId,
+      input.requestId,
+      `build:${input.type}:${input.tileC}:${input.tileR}`,
+      async (tx) => {
       const world = await this.requireWorld(tx, playerId);
       const rule = BUILDING_RULES[input.type];
       if (!rule || world.level < rule.minimumLevel) {
@@ -184,7 +212,7 @@ export class GameService {
     return this.idempotent(
       playerId,
       requestId,
-      'complete-building',
+      `complete-building:${buildingId}`,
       async (tx) => {
         const world = await this.requireWorld(tx, playerId);
         const building = await tx.building.findFirst({
@@ -248,13 +276,8 @@ export class GameService {
     return this.idempotent(playerId, requestId, 'production', async (tx) => {
       const now = new Date();
       const world = await this.requireWorld(tx, playerId);
-      const periods = Math.min(
-        120,
-        Math.floor(
-          (now.getTime() - world.lastProductionAt.getTime()) /
-            PRODUCTION_INTERVAL_MS,
-        ),
-      );
+      const productionWindow = offlineProductionWindow(world.lastProductionAt, now);
+      const { periods } = productionWindow;
       if (periods < 1) return this.snapshot(tx, playerId);
 
       const completedBuildings = await tx.building.groupBy({
@@ -287,10 +310,7 @@ export class GameService {
       await tx.world.update({
         where: { id: world.id },
         data: {
-          lastProductionAt: new Date(
-            world.lastProductionAt.getTime() +
-              periods * PRODUCTION_INTERVAL_MS,
-          ),
+          lastProductionAt: productionWindow.nextProductionAt,
         },
       });
       return this.snapshot(tx, playerId);
@@ -368,8 +388,11 @@ export class GameService {
     playerId: string,
   ): Promise<GameSnapshot> {
     const world = await this.requireWorld(transaction, playerId);
+    const now = new Date();
     const pet = world.pet
-      ? degradedPet(world.pet, new Date())
+      ? world.level >= 5
+        ? advancePetOffline(world.pet, now)
+        : { ...world.pet, lastUpdated: now }
       : {
           name: 'Нокс',
           species: 'Лисица-призрак',
@@ -378,8 +401,14 @@ export class GameService {
           hunger: 80,
           mood: 75,
           health: 90,
-          lastUpdated: new Date(),
+          lastUpdated: now,
         };
+    if (world.pet && pet.lastUpdated.getTime() !== world.pet.lastUpdated.getTime()) {
+      await transaction.pet.update({
+        where: { worldId: world.id },
+        data: { xp: pet.xp, level: pet.level, lastUpdated: pet.lastUpdated },
+      });
+    }
     const foundItems =
       world.level >= 3
         ? uniqueItems(world.foundItems, ['i3'])
@@ -448,7 +477,7 @@ export class GameService {
           mood: pet.mood,
           health: pet.health,
           lastUpdated: pet.lastUpdated.getTime(),
-          discovered: world.level >= 2,
+          discovered: world.level >= 5,
         },
       },
     };

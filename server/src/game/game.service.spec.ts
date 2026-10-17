@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 import { PrismaService } from '../database/prisma.service.js';
 import { GameService } from './game.service.js';
@@ -54,6 +55,468 @@ describe('GameService idempotency', () => {
     await expect(runIdempotent(service, 'build')).rejects.toBeInstanceOf(
       ConflictException,
     );
+  });
+
+  it('rejects reusing a request key for a different building target', async () => {
+    const service = createService({
+      kind: 'build:garden:2:3',
+      response: { world: { id: 'world-1' } },
+    });
+
+    await expect(runIdempotent(service, 'build:house:2:3')).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+  });
+
+  it('replays the winning response when concurrent requests race on the same key', async () => {
+    const snapshot = { world: { id: 'world-1', level: 2 } };
+    const uniqueConflict = new Prisma.PrismaClientKnownRequestError(
+      'Unique constraint failed',
+      {
+        code: 'P2002',
+        clientVersion: 'test',
+        meta: { target: ['playerId', 'key'] },
+      },
+    );
+    const transaction = {
+      gameAction: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockRejectedValue(uniqueConflict),
+      },
+    };
+    const winningAction = { kind: 'build', response: snapshot };
+    const prisma = {
+      $transaction: vi.fn(
+        async (callback: (client: typeof transaction) => Promise<unknown>) =>
+          callback(transaction),
+      ),
+      gameAction: {
+        findUnique: vi.fn().mockResolvedValue(winningAction),
+      },
+    } as unknown as PrismaService;
+    const service = new GameService(prisma);
+    const operation = vi.fn().mockResolvedValue(snapshot);
+
+    await expect(
+      (service as unknown as IdempotentRunner).idempotent(
+        'player-1',
+        'request-1',
+        'build',
+        operation,
+      ),
+    ).resolves.toEqual(snapshot);
+
+    expect(operation).toHaveBeenCalledTimes(1);
+    expect(prisma.gameAction.findUnique).toHaveBeenCalledWith({
+      where: { playerId_key: { playerId: 'player-1', key: 'request-1' } },
+    });
+  });
+
+  it('rejects a concurrent key winner when its action type differs', async () => {
+    const uniqueConflict = new Prisma.PrismaClientKnownRequestError(
+      'Unique constraint failed',
+      {
+        code: 'P2002',
+        clientVersion: 'test',
+        meta: { target: ['playerId', 'key'] },
+      },
+    );
+    const transaction = {
+      gameAction: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockRejectedValue(uniqueConflict),
+      },
+    };
+    const prisma = {
+      $transaction: vi.fn(
+        async (callback: (client: typeof transaction) => Promise<unknown>) =>
+          callback(transaction),
+      ),
+      gameAction: {
+        findUnique: vi.fn().mockResolvedValue({
+          kind: 'collect',
+          response: { world: { id: 'world-1' } },
+        }),
+      },
+    } as unknown as PrismaService;
+    const service = new GameService(prisma);
+    const operation = vi.fn().mockResolvedValue({ world: { id: 'world-1' } });
+
+    await expect(
+      (service as unknown as IdempotentRunner).idempotent(
+        'player-1',
+        'request-1',
+        'build',
+        operation,
+      ),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    expect(operation).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries a game mutation after a serializable transaction conflict', async () => {
+    const serializationError = new Prisma.PrismaClientKnownRequestError(
+      'Serialization failure',
+      { code: 'P2034', clientVersion: 'test' },
+    );
+    const snapshot = { world: { id: 'world-1', level: 2 } };
+    const transactionClient = {
+      gameAction: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockResolvedValue({}),
+      },
+    };
+    const transaction = vi
+      .fn()
+      .mockRejectedValueOnce(serializationError)
+      .mockImplementationOnce(
+        async (callback: (client: typeof transactionClient) => Promise<unknown>) =>
+          callback(transactionClient),
+      );
+    const prisma = { $transaction: transaction } as unknown as PrismaService;
+    const service = new GameService(prisma);
+    const operation = vi.fn().mockResolvedValue(snapshot);
+
+    await expect(
+      (service as unknown as IdempotentRunner).idempotent(
+        'player-1',
+        'request-retry',
+        'collect:2,3',
+        operation,
+      ),
+    ).resolves.toEqual(snapshot);
+
+    expect(transaction).toHaveBeenCalledTimes(2);
+    expect(operation).toHaveBeenCalledTimes(1);
+    expect(transactionClient.gameAction.create).toHaveBeenCalledWith({
+      data: {
+        playerId: 'player-1',
+        key: 'request-retry',
+        kind: 'collect:2,3',
+        response: snapshot,
+      },
+    });
+    expect(transaction).toHaveBeenNthCalledWith(
+      1,
+      expect.any(Function),
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+    expect(transaction).toHaveBeenNthCalledWith(
+      2,
+      expect.any(Function),
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+  });
+
+  it('retries world-state reads after a serializable transaction conflict', async () => {
+    const serializationError = new Prisma.PrismaClientKnownRequestError(
+      'Serialization failure',
+      { code: 'P2034', clientVersion: 'test' },
+    );
+    const world = {
+      id: 'world-1',
+      name: 'Afterzero',
+      level: 1,
+      xp: 0,
+      lastDailyClaimAt: null,
+      resources: { wood: 25, stone: 10, metal: 0, energy: 20 },
+      buildings: [],
+      pet: null,
+      foundItems: [],
+      woodCollects: 0,
+      stoneCollects: 0,
+      ruinsVisits: 0,
+      portalInteracts: 0,
+      totalBuilt: 0,
+      petCareCount: 0,
+      friendVisited: false,
+      claimedQuests: [],
+    };
+    const transactionClient = {
+      world: { findFirst: vi.fn().mockResolvedValue(world) },
+      building: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      resourceNodeCooldown: { findMany: vi.fn().mockResolvedValue([]) },
+    };
+    const transaction = vi
+      .fn()
+      .mockRejectedValueOnce(serializationError)
+      .mockImplementationOnce(
+        async (callback: (client: typeof transactionClient) => Promise<unknown>) =>
+          callback(transactionClient),
+      );
+    const prisma = {
+      $transaction: transaction,
+    } as unknown as PrismaService;
+    const service = new GameService(prisma);
+
+    await expect(service.getState('player-1')).resolves.toMatchObject({
+      world: {
+        id: 'world-1',
+        resources: { wood: 25, stone: 10, metal: 0, energy: 20 },
+      },
+    });
+
+    expect(transaction).toHaveBeenCalledTimes(2);
+    expect(transaction).toHaveBeenNthCalledWith(
+      1,
+      expect.any(Function),
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+    expect(transaction).toHaveBeenNthCalledWith(
+      2,
+      expect.any(Function),
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+  });
+
+  it('rejects collecting a resource node while its cooldown is active', async () => {
+    const world = {
+      id: 'world-1',
+      level: 1,
+      xp: 0,
+      resources: { wood: 10, stone: 0, metal: 0, energy: 20 },
+      buildings: [],
+      pet: null,
+      foundItems: [],
+      woodCollects: 0,
+      stoneCollects: 0,
+      dailyProgressDate: null,
+      dailyCollects: 0,
+      claimedQuests: [],
+      totalBuilt: 0,
+      ruinsVisits: 0,
+      portalInteracts: 0,
+      petCareCount: 0,
+      friendVisited: false,
+      lastDailyClaimAt: null,
+    };
+    const transaction = {
+      gameAction: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        create: vi.fn(),
+      },
+      world: {
+        findFirst: vi.fn().mockResolvedValue(world),
+        update: vi.fn(),
+      },
+      resourceNodeCooldown: {
+        findUnique: vi.fn().mockResolvedValue({
+          availableAt: new Date(Date.now() + 30_000),
+        }),
+      },
+      resourceBalance: { update: vi.fn() },
+    };
+    const prisma = {
+      $transaction: vi.fn(
+        async (callback: (client: typeof transaction) => Promise<unknown>) =>
+          callback(transaction),
+      ),
+    } as unknown as PrismaService;
+    const service = new GameService(prisma);
+
+    await expect(
+      service.collect('player-1', {
+        requestId: '11111111-1111-4111-8111-111111111111',
+        nodeId: '2,3',
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    expect(transaction.resourceNodeCooldown.findUnique).toHaveBeenCalledWith({
+      where: { worldId_nodeKey: { worldId: 'world-1', nodeKey: '2,3' } },
+    });
+    expect(transaction.world.update).not.toHaveBeenCalled();
+    expect(transaction.resourceBalance.update).not.toHaveBeenCalled();
+    expect(transaction.gameAction.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects a resource collection when a competing request starts the cooldown', async () => {
+    const serializationError = new Prisma.PrismaClientKnownRequestError(
+      'Serialization failure',
+      { code: 'P2034', clientVersion: 'test' },
+    );
+    const world = {
+      id: 'world-1',
+      level: 1,
+      xp: 0,
+      resources: { wood: 10, stone: 0, metal: 0, energy: 10 },
+      buildings: [],
+      pet: null,
+      foundItems: [],
+      claimedQuests: [],
+      woodCollects: 0,
+      stoneCollects: 0,
+      dailyCollects: 0,
+      dailyProgressDate: null,
+      ruinsVisits: 0,
+      portalInteracts: 0,
+      totalBuilt: 0,
+      petCareCount: 0,
+      friendVisited: false,
+      lastDailyClaimAt: null,
+    };
+    let cooldown: { availableAt: Date } | null = null;
+    const transactionClient = {
+      gameAction: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        create: vi.fn(),
+      },
+      world: {
+        findFirst: vi.fn().mockImplementation(async () => world),
+        update: vi.fn(),
+      },
+      resourceBalance: { update: vi.fn() },
+      resourceNodeCooldown: {
+        findUnique: vi.fn().mockImplementation(async () => cooldown),
+        upsert: vi.fn(),
+      },
+    };
+    const transaction = vi
+      .fn()
+      .mockImplementationOnce(async () => {
+        cooldown = { availableAt: new Date(Date.now() + 30_000) };
+        throw serializationError;
+      })
+      .mockImplementationOnce(
+        async (callback: (client: typeof transactionClient) => Promise<unknown>) =>
+          callback(transactionClient),
+      );
+    const prisma = { $transaction: transaction } as unknown as PrismaService;
+    const service = new GameService(prisma);
+
+    await expect(
+      service.collect('player-1', {
+        requestId: 'collect-race-retry',
+        nodeId: '2,3',
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    expect(transaction).toHaveBeenCalledTimes(2);
+    expect(transactionClient.world.update).not.toHaveBeenCalled();
+    expect(transactionClient.resourceBalance.update).not.toHaveBeenCalled();
+    expect(transactionClient.resourceNodeCooldown.upsert).not.toHaveBeenCalled();
+    expect(transactionClient.gameAction.create).not.toHaveBeenCalled();
+  });
+
+  it('does not grant a daily reward when another claim wins during retry', async () => {
+    const serializationError = new Prisma.PrismaClientKnownRequestError(
+      'Serialization failure',
+      { code: 'P2034', clientVersion: 'test' },
+    );
+    const world = {
+      id: 'world-1',
+      level: 1,
+      xp: 0,
+      lastDailyClaimAt: null as Date | null,
+      resources: { wood: 10, stone: 0, metal: 0, energy: 10 },
+      buildings: [],
+      pet: null,
+      foundItems: [],
+      claimedQuests: [],
+      woodCollects: 0,
+      stoneCollects: 0,
+      dailyCollects: 0,
+      ruinsVisits: 0,
+      portalInteracts: 0,
+      totalBuilt: 0,
+      petCareCount: 0,
+      friendVisited: false,
+    };
+    const transactionClient = {
+      gameAction: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        create: vi.fn(),
+      },
+      world: {
+        findFirst: vi.fn().mockImplementation(async () => world),
+        update: vi.fn(),
+      },
+      resourceBalance: { update: vi.fn() },
+    };
+    const transaction = vi
+      .fn()
+      .mockImplementationOnce(async () => {
+        // Simulate a concurrent daily claim committing while this transaction
+        // is aborted by PostgreSQL's serializable isolation.
+        world.lastDailyClaimAt = new Date();
+        throw serializationError;
+      })
+      .mockImplementationOnce(
+        async (callback: (client: typeof transactionClient) => Promise<unknown>) =>
+          callback(transactionClient),
+      );
+    const prisma = { $transaction: transaction } as unknown as PrismaService;
+    const service = new GameService(prisma);
+
+    await expect(
+      service.claimDaily('player-1', 'daily-race-retry'),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    expect(transaction).toHaveBeenCalledTimes(2);
+    expect(transactionClient.resourceBalance.update).not.toHaveBeenCalled();
+    expect(transactionClient.world.update).not.toHaveBeenCalled();
+    expect(transactionClient.gameAction.create).not.toHaveBeenCalled();
+  });
+
+  it('does not grant production twice when another claim wins during retry', async () => {
+    const serializationError = new Prisma.PrismaClientKnownRequestError(
+      'Serialization failure',
+      { code: 'P2034', clientVersion: 'test' },
+    );
+    const now = new Date();
+    const world = {
+      id: 'world-1',
+      name: 'Afterzero',
+      level: 1,
+      xp: 0,
+      lastDailyClaimAt: null,
+      lastProductionAt: new Date(now.getTime() - 60_000),
+      resources: { wood: 10, stone: 0, metal: 0, energy: 10 },
+      buildings: [],
+      pet: null,
+      foundItems: [],
+      claimedQuests: [],
+      woodCollects: 0,
+      stoneCollects: 0,
+      dailyCollects: 0,
+      dailyProgressDate: null,
+      ruinsVisits: 0,
+      portalInteracts: 0,
+      totalBuilt: 0,
+      petCareCount: 0,
+      friendVisited: false,
+    };
+    const transactionClient = {
+      gameAction: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        create: vi.fn(),
+      },
+      world: { findFirst: vi.fn().mockImplementation(async () => world) },
+      building: { groupBy: vi.fn().mockResolvedValue([]) },
+      resourceBalance: { update: vi.fn() },
+      resourceNodeCooldown: { findMany: vi.fn().mockResolvedValue([]) },
+    };
+    const transaction = vi
+      .fn()
+      .mockImplementationOnce(async () => {
+        // Simulate a competing claim advancing the production cursor before
+        // this serializable transaction retries.
+        world.lastProductionAt = new Date();
+        throw serializationError;
+      })
+      .mockImplementationOnce(
+        async (callback: (client: typeof transactionClient) => Promise<unknown>) =>
+          callback(transactionClient),
+      );
+    const prisma = { $transaction: transaction } as unknown as PrismaService;
+    const service = new GameService(prisma);
+
+    await expect(
+      service.claimProduction('player-1', 'production-race-retry'),
+    ).resolves.toMatchObject({ world: { id: 'world-1' } });
+
+    expect(transaction).toHaveBeenCalledTimes(2);
+    expect(transactionClient.resourceBalance.update).not.toHaveBeenCalled();
+    expect(transactionClient.world.findFirst).toHaveBeenCalledTimes(2);
   });
 
   it('does not debit a building when the atomic balance guard fails', async () => {

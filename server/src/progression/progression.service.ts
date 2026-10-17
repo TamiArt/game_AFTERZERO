@@ -16,7 +16,7 @@ import type {
   WorldInteractionDto,
 } from './dto/progression-action.dto.js';
 import {
-  degradedPet,
+  advancePetOffline,
   petXpRequired,
   QUEST_RULES,
   questProgress,
@@ -41,7 +41,11 @@ export class ProgressionService {
     playerId: string,
     input: ClaimQuestDto,
   ): Promise<GameSnapshot> {
-    await this.runAction(playerId, input.requestId, 'quest', async (tx) => {
+    await this.runAction(
+      playerId,
+      input.requestId,
+      `quest:${input.questId}`,
+      async (tx) => {
       const world = await this.requireWorld(tx, playerId);
       const rule = QUEST_RULES[input.questId];
       if (!rule || world.level < rule.minimumLevel) {
@@ -162,12 +166,21 @@ export class ProgressionService {
   ): Promise<GameSnapshot> {
     await this.runAction(playerId, input.requestId, `pet-${input.action}`, async (tx) => {
       const world = await this.requireWorld(tx, playerId);
-      if (world.level < 2 || !world.pet) {
+      if (world.level < 5 || !world.pet) {
         throw new BadRequestException('Pet is not discovered');
       }
 
       const now = new Date();
-      const pet = degradedPet(world.pet, now);
+      const pet = advancePetOffline(world.pet, now);
+      // Enforce the same useful-action thresholds on the server as the UI.
+      // Client-side disabled buttons are not a security or progression guard.
+      if (input.action === 'feed' && pet.hunger >= 95) {
+        throw new ConflictException('Pet does not need feeding yet');
+      }
+      if (input.action === 'rest' && pet.health >= 95) {
+        throw new ConflictException('Pet does not need rest yet');
+      }
+
       let hunger = pet.hunger;
       let mood = pet.mood;
       let health = pet.health;

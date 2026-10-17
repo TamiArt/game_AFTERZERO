@@ -14,6 +14,7 @@ import {
   startServerBuilding,
   type GameSnapshot,
 } from '../api/game';
+import { runSnapshotMutation } from '../api/snapshotMutationQueue';
 import {
   useGameStore,
   type PlacedBuilding,
@@ -69,7 +70,7 @@ export function useAuthoritativeGame() {
         return;
       }
       if (!requireSession()) return;
-      void collectResource(tileKey).then(applySnapshot).catch(reportError);
+      void runSnapshotMutation({ operation: () => collectResource(tileKey), apply: applySnapshot }).catch(reportError);
     },
     [],
   );
@@ -103,7 +104,7 @@ export function useAuthoritativeGame() {
       if (!requireSession()) return false;
 
       try {
-        applySnapshot(await startServerBuilding(type, tileC, tileR));
+        await runSnapshotMutation({ operation: () => startServerBuilding(type, tileC, tileR), apply: applySnapshot });
         return true;
       } catch (error) {
         reportError(error);
@@ -124,7 +125,7 @@ export function useAuthoritativeGame() {
     // the server is processing the first request.
     pendingBuildingIds.current.add(building.id);
     try {
-      applySnapshot(await completeServerBuilding(building.id));
+      await runSnapshotMutation({ operation: () => completeServerBuilding(building.id), apply: applySnapshot });
     } catch (error) {
       reportError(error);
     } finally {
@@ -138,21 +139,17 @@ export function useAuthoritativeGame() {
       return;
     }
     if (!requireSession()) return;
-    void claimServerDaily().then(applySnapshot).catch(reportError);
+    void runSnapshotMutation({ operation: claimServerDaily, apply: applySnapshot }).catch(reportError);
   }, []);
 
   const claimProduction = useCallback(() => {
     const state = useGameStore.getState();
     if (!isGameBackendConfigured()) {
-      for (const building of state.buildings.filter((item) => item.endsAt === null)) {
-        if (building.type === 'garden') state.addResource('energy', 2);
-        if (building.type === 'farm') state.addResource('stone', 1);
-        if (building.type === 'workshop') state.addResource('metal', 1);
-      }
+      state.claimOfflineProduction();
       return;
     }
     if (!requireSession()) return;
-    void claimServerProduction().then(applySnapshot).catch(reportError);
+    void runSnapshotMutation({ operation: claimServerProduction, apply: applySnapshot }).catch(reportError);
   }, []);
 
   const claimQuest = useCallback(
@@ -167,7 +164,7 @@ export function useAuthoritativeGame() {
         return;
       }
       if (!requireSession()) return;
-      void claimServerQuest(id).then(applySnapshot).catch(reportError);
+      void runSnapshotMutation({ operation: () => claimServerQuest(id), apply: applySnapshot }).catch(reportError);
     },
     [],
   );
@@ -189,7 +186,7 @@ export function useAuthoritativeGame() {
       return;
     }
     if (!requireSession()) return;
-    void exploreServerCollection().then(applySnapshot).catch(reportError);
+    void runSnapshotMutation({ operation: exploreServerCollection, apply: applySnapshot }).catch(reportError);
   }, []);
 
   const petAction = useCallback((action: 'feed' | 'play' | 'rest') => {
@@ -201,7 +198,7 @@ export function useAuthoritativeGame() {
       return;
     }
     if (!requireSession()) return;
-    void serverPetAction(action).then(applySnapshot).catch(reportError);
+    void runSnapshotMutation({ operation: () => serverPetAction(action), apply: applySnapshot }).catch(reportError);
   }, []);
 
   const interact = useCallback((action: 'ruins' | 'portal') => {
@@ -212,7 +209,7 @@ export function useAuthoritativeGame() {
       return;
     }
     if (!requireSession()) return;
-    void serverWorldInteraction(action).then(applySnapshot).catch(reportError);
+    void runSnapshotMutation({ operation: () => serverWorldInteraction(action), apply: applySnapshot }).catch(reportError);
   }, []);
 
   return {
