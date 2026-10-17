@@ -239,3 +239,15 @@ The active branch remains `fix/server-state-concurrency`. A regression test now 
 - [ ] Add server-authoritative contact edges, relationship strength from validated interactions, and shortest-path search up to seven handshakes with privacy/block filtering.
 - [ ] Add database migration, API/DTO/service/controller tests and client API integration; ensure existing players with no city complete the profile before appearing in the global map.
 - [ ] Verify map responsiveness, label collisions, keyboard access, reduced-motion behavior and CI.
+
+
+## Art asset audit and first integration slice (2026-10-17)
+- [x] Inspect all 43 extracted PNG reference crops in a contact sheet; identify that UI mockup crops and some VFX crops are reference-only, not production UI.
+- [x] Apply edge-connected dark-navy background removal and subtle alpha feathering to all 43 PNGs; regenerate manifest dimensions and add docs/ASSET_QA_REPORT.md.
+- [x] Add reusable in-game SVG sprites for the glowing mushroom, moonflower and AI core; integrate them into the isometric world render path without changing gameplay rules.
+- [x] Add reusable illustrated NPC portrait medallions and use them in the Social screen's contact list and friend-world header.
+- [x] Add bespoke glowing SVG artifact icons for the 12 existing collection entries and integrate them without changing item IDs, unlocks or collection mechanics.
+- [ ] Manually inspect each cleaned PNG at native size and on the actual game background; replace crops that lose fine details or include neighboring fragments.
+- [ ] Add an asset preview/gallery or visual regression checks for the extracted pack.
+- [ ] Integrate production-clean standalone PNGs where they provide more fidelity than the in-code SVG; keep mockup crops out of live UI.
+- [ ] Verify CI for this slice; report only checks confirmed by workflow results.
