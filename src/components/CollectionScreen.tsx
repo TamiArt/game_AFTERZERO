@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { useAuthoritativeGame } from '../hooks/useAuthoritativeGame';
+import { ArtifactIcon, type ArtifactKind } from './art/ArtifactIcon';
 
 interface CollectItem {
   id: string;
@@ -12,18 +13,18 @@ interface CollectItem {
 }
 
 const ALL_ITEMS: CollectItem[] = [
-  { id: 'i1',  icon: '🪨', name: 'Древний камень',   rarity: 'common',    desc: 'Обломок прошлой цивилизации.',               hint: 'Собери камень на острове' },
-  { id: 'i2',  icon: '🌿', name: 'Светящийся лист',  rarity: 'rare',      desc: 'Излучает слабое голубое свечение ночью.',    hint: 'Собери дерево 5 раз' },
-  { id: 'i3',  icon: '💎', name: 'Кристалл Зеро',    rarity: 'epic',      desc: 'Осколок источника острова.',                 hint: 'Достигни уровня 3' },
-  { id: 'i4',  icon: '🗝️', name: 'Ржавый ключ',      rarity: 'common',    desc: 'Подходит к руинам на севере.',               hint: 'Исследуй руины 2 раза' },
-  { id: 'i5',  icon: '🔮', name: 'Эфирная сфера',    rarity: 'legendary', desc: 'Формируется из энергии самого острова.',     hint: 'Пока недоступно' },
-  { id: 'i6',  icon: '🦋', name: 'Лунная бабочка',   rarity: 'rare',      desc: 'Появляется только при полной луне.',         hint: 'Найди питомца' },
-  { id: 'i7',  icon: '⚗️', name: 'Флакон портала',   rarity: 'epic',      desc: 'Содержит кусочек другого мира.',             hint: 'Запиши сигнал портала 3 раза' },
-  { id: 'i8',  icon: '🐚', name: 'Морская раковина',  rarity: 'common',    desc: 'Из глубин вокруг острова.',                  hint: 'Стартовый предмет' },
-  { id: 'i9',  icon: '🌀', name: 'Фрагмент карты',   rarity: 'rare',      desc: '1 из 3. Нужны все части.',                  hint: 'Посети друга или построй 2+ зданий' },
-  { id: 'i10', icon: '🌟', name: 'Звёздный песок',    rarity: 'legendary', desc: 'Падает со звёзд в новолуние.',               hint: 'Легендарная редкость' },
-  { id: 'i11', icon: '🪵', name: 'Живое дерево',      rarity: 'common',    desc: 'Дерево продолжает расти в ладони.',          hint: 'Собери дерево первый раз' },
-  { id: 'i12', icon: '🐾', name: 'Отпечаток',         rarity: 'rare',      desc: 'След таинственного существа.',               hint: 'Покорми питомца' },
+  { id: 'i1',  icon: '🪨', art: 'stone', name: 'Древний камень',   rarity: 'common',    desc: 'Обломок прошлой цивилизации.',               hint: 'Собери камень на острове' },
+  { id: 'i2',  icon: '🌿', art: 'leaf', name: 'Светящийся лист',  rarity: 'rare',      desc: 'Излучает слабое голубое свечение ночью.',    hint: 'Собери дерево 5 раз' },
+  { id: 'i3',  icon: '💎', art: 'crystal', name: 'Кристалл Зеро',    rarity: 'epic',      desc: 'Осколок источника острова.',                 hint: 'Достигни уровня 3' },
+  { id: 'i4',  icon: '🗝️', art: 'key', name: 'Ржавый ключ',      rarity: 'common',    desc: 'Подходит к руинам на севере.',               hint: 'Исследуй руины 2 раза' },
+  { id: 'i5',  icon: '🔮', art: 'orb', name: 'Эфирная сфера',    rarity: 'legendary', desc: 'Формируется из энергии самого острова.',     hint: 'Пока недоступно' },
+  { id: 'i6',  icon: '🦋', art: 'moth', name: 'Лунная бабочка',   rarity: 'rare',      desc: 'Появляется только при полной луне.',         hint: 'Найди питомца' },
+  { id: 'i7',  icon: '⚗️', art: 'vial', name: 'Флакон портала',   rarity: 'epic',      desc: 'Содержит кусочек другого мира.',             hint: 'Запиши сигнал портала 3 раза' },
+  { id: 'i8',  icon: '🐚', art: 'shell', name: 'Морская раковина',  rarity: 'common',    desc: 'Из глубин вокруг острова.',                  hint: 'Стартовый предмет' },
+  { id: 'i9',  icon: '🌀', art: 'map', name: 'Фрагмент карты',   rarity: 'rare',      desc: '1 из 3. Нужны все части.',                  hint: 'Посети друга или построй 2+ зданий' },
+  { id: 'i10', icon: '🌟', art: 'star', name: 'Звёздный песок',    rarity: 'legendary', desc: 'Падает со звёзд в новолуние.',               hint: 'Легендарная редкость' },
+  { id: 'i11', icon: '🪵', art: 'wood', name: 'Живое дерево',      rarity: 'common',    desc: 'Дерево продолжает расти в ладони.',          hint: 'Собери дерево первый раз' },
+  { id: 'i12', icon: '🐾', art: 'paw', name: 'Отпечаток',         rarity: 'rare',      desc: 'След таинственного существа.',               hint: 'Покорми питомца' },
 ];
 
 const RARITY_COLORS: Record<string, string> = {
